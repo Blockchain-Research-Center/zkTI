@@ -1,0 +1,3 @@
+[submodule "groth16/depends/libsnark"]
+	path = groth16/depends/libsnark
+	url = https://github.com/scipr-lab/libsnark.git

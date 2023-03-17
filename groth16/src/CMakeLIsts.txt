@@ -1,0 +1,19 @@
+include_directories(.)
+
+add_executable(
+        zkTI_MV
+                zkTI_MV.cpp   
+)
+target_link_libraries(
+        zkTI_MV
+                snark
+)
+target_include_directories( 
+        zkTI_MV
+                PUBLIC
+                include
+                ${DEPENDS_DIR}/libsnark
+                ${DEPENDS_DIR}/libsnark/depends/libfqfft
+)
+
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -mavx2 -faligned-new -lstdc++ -O3 -DNDEBUG")
