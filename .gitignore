@@ -1,3 +1,4 @@
 .vscode 
 
-.groth16/build
+groth16/build/*
+groth16/depends/libsnark

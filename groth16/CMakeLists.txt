@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8)
 
-project(ZKTI)
+project(zkTI)
 
 set(
   CURVE
@@ -20,7 +20,7 @@ set(
 
 set(
   OPT_FLAGS
-  ""
+  "-g"
   CACHE
   STRING
   "Override C++ compiler optimization flags"
