@@ -67,9 +67,9 @@ std::vector<std::vector<unsigned>> read_answer_data(const std::vector<std::vecto
     // verify transposed data
     // for (int i = 0; i < transposed_data.size(); i++) {
     //     for(int j = 0; j < transposed_data.at(i).size(); j++) {
-    //         std::cout << transposed_data[i][j];
+    //         std::cerr << transposed_data[i][j];
     //     }
-    //     std::cout << std::endl;
+    //     std::cerr << std::endl;
     // }
 
     return answer_data;
@@ -112,7 +112,7 @@ std::vector<unsigned> read_truth_data(std::vector<std::vector<std::string>> raw_
 
     // verify transposed data
     // for (int i = 0; i < truth_data.size(); i++) {
-    //     std::cout << truth_data[i] << std::endl;
+    //     std::cerr << truth_data[i] << std::endl;
     // }
 
     return truth_data;
@@ -157,24 +157,24 @@ template <typename ppT>
 void algo_MV(std::vector<std::vector<unsigned>>&answer_data, std::vector<unsigned>& truth_data) {
     typedef libff::Fr<ppT> FieldT;
 
-    std::cout << "Task number: " << answer_data.size() << std::endl;
-    std::cout << "Worker number: " << answer_data[0].size() << std::endl;
-    std::cout << "Label number: " << answer_data.size() * answer_data[0].size() << std::endl;
+    std::cerr << "Task number: " << answer_data.size() << std::endl;
+    std::cerr << "Worker number: " << answer_data[0].size() << std::endl;
+    std::cerr << "Label number: " << answer_data.size() * answer_data[0].size() << std::endl;
 
     MV mv = MV(answer_data, truth_data);
-    std::cout << "Run the Truth Inference algorithm: " << std::endl;
+    std::cerr << "Run the Truth Inference algorithm: " << std::endl;
     std::vector<unsigned> result = mv.run();
-    std::cout << "Accuracy: " << mv.get_accuracy(result) << std::endl;
+    std::cerr << "Accuracy: " << mv.get_accuracy(result) << std::endl;
 
-    // zk-SNARK
+    // Groth16 zk-SNARK
     protoboard<FieldT> pb;
     MajorityVoteCircuit<FieldT> majorityVoteCircuit = MajorityVoteCircuit<FieldT>(pb, mv, result, "Majority_Vote_Circuit");
     majorityVoteCircuit.generate_r1cs_constraints();
     majorityVoteCircuit.generate_r1cs_witness();
 
-    std::cout << "Constraints number: " << pb.num_constraints() << std::endl;
-    std::cout << "Variable number: " << pb.num_variables() << std::endl;
-    std::cout << "Pass: " << pb.is_satisfied() << std::endl;
+    std::cerr << "Constraints number: " << pb.num_constraints() << std::endl;
+    std::cerr << "Variable number: " << pb.num_variables() << std::endl;
+    std::cerr << "Protoboard satisfied: " << pb.is_satisfied() << std::endl;
 
     run_r1cs_gg_ppzksnark<ppT>(pb, "zkTI_MV_proof");
 }
@@ -190,7 +190,7 @@ int main(int argc, char** argv) {
 
     default_r1cs_gg_ppzksnark_pp::init_public_params();
 
-    std::cout << "Run Groth16 zk-SNARK for zkTI using MV algorithm" << std::endl;
+    std::cerr << "Run Groth16 zk-SNARK for zkTI using MV algorithm" << std::endl;
     algo_MV<default_r1cs_gg_ppzksnark_pp>(answer_data, truth_data);
-    std::cout << "Finish..." << std::endl;
+    std::cerr << "Finish." << std::endl;
 }

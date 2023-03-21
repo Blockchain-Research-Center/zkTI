@@ -7,7 +7,7 @@ using namespace libsnark;
 
 #define EMPTY_LABEL 100;
 #define add_r1cs(x, y, z) this->pb.add_r1cs_constraint(r1cs_constraint<FieldT>(x, y, z))
-// #define eval(x) this->pb.val(x)
+#define pb_eval(x) this->pb.val(x)
 
 template<typename FieldT>
 void _init_pb_array(protoboard <FieldT> &pb, pb_variable <FieldT> *&array, int length, std::string &&name) {

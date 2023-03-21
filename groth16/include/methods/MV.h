@@ -9,12 +9,16 @@
 #include <map>
 
 
-class MV : TruthInference {
+class MV : public TruthInference {
+
+public:
+    std::vector<std::vector<int>> label_counts;
+    int label_class_number;
 
 public:
     MV(std::vector<std::vector<unsigned>>& _answer_data, std::vector<unsigned> &_truth_data) : 
     TruthInference(_answer_data, _truth_data) {
-
+        label_class_number = 0;
     }
 
     std::vector<unsigned> run() {
@@ -41,6 +45,20 @@ public:
             }
 
             result[i] = major_label;
+
+            // update total label class
+            if(counts.size() > label_class_number) {
+                label_class_number = counts.size();
+            }
+
+            // update label count
+            std::vector<int> row;
+            row.resize(label_class_number);
+            for(auto &p : counts) {
+                assert(p.first < row.size());
+                row[p.first] = p.second;
+            }
+            label_counts.push_back(row);
         }
 
         return result;

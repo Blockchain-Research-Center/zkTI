@@ -7,7 +7,7 @@ using namespace std;
 
 class TruthInference {
 
-protected:
+public:
     std::vector<std::vector<unsigned>> answer_data;
     std::vector<unsigned> truth_data;
 
