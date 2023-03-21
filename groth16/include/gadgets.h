@@ -20,6 +20,7 @@ public:
     ~ComparisonGadget() {}
 
     void generate_r1cs_constraints() {
+        // 1 y=x+d 0 x=
         add_r1cs(2 * comparison_result - 1, y - x, diff);
     }
 
