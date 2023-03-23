@@ -190,7 +190,7 @@ int main(int argc, char** argv) {
 
     default_r1cs_gg_ppzksnark_pp::init_public_params();
 
-    std::cerr << "Run Groth16 zk-SNARK for zkTI using MV algorithm" << std::endl;
+    std::cerr << "Run Groth16 zk-SNARK for zkTI using MV algorithm: " << std::endl;
     algo_MV<default_r1cs_gg_ppzksnark_pp>(answer_data, truth_data);
     std::cerr << "Finish." << std::endl;
 }

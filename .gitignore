@@ -2,3 +2,5 @@
 
 groth16/build/*
 groth16/depends/libsnark
+groth16/include/zkTI_MV_proof
+groth16/depends/libsnark
