@@ -19,5 +19,5 @@ Run the algotithms using given datasets, e.g.:
 
 ``` bash
 # still under `build` folder
-$ ./src/zkTI ../datasets/d_duck_identification/answer.csv ../datasets/d_duck_identification/truth.csv
+$ ./src/zkTI ../../datasets/d_duck_identification/answer.csv ../../datasets/d_duck_identification/truth.csv
 ```

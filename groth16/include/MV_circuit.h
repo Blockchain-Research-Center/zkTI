@@ -24,17 +24,15 @@ public:
     int label_class_number;
 
 private:
-    pb_variable<FieldT> zero_var;
-
-    // (primary) public input
+    // (primary input) public input
     std::vector<pb_variable<FieldT>> predicted_class_variables;
     std::vector<pb_variable<FieldT>> label_class_variables;
     std::vector<pb_variable<FieldT>> correct;
 
-    // (auxiliary) secret witness
+    // (auxiliary input) secret witness
     std::vector<std::vector<pb_variable<FieldT>>> answer_variables;
 
-    // (auxiliary) auxiliary witness and gadgets
+    // (auxiliary input) auxiliary witness and gadgets
     // label equality gadgets
     std::vector<std::vector<std::vector<EqualityCheckGadget<FieldT>>>> equality_gadgets; // task * worker * label
     std::vector<std::vector<std::vector<pb_variable<FieldT>>>> equality_results_variables;
@@ -54,14 +52,15 @@ private:
     void init_pb_vars()
     {
         auto &prefix = this->annotation_prefix;
-
-        // zero variable
-        zero_var.allocate(this->pb, prefix + std::string("zero_var"));
-
+        
+        // public inputs
         // predicted variables;
         init_one_dimension_vec(predicted_class_variables, task_number, std::string("predicted"));
         // label class variables
         init_one_dimension_vec(label_class_variables, label_class_number, std::string("label_class"));
+        // correct
+        init_one_dimension_vec(correct, task_number, std::string("correct"));
+
         // answer variables
         init_two_dimension_vec(answer_variables, task_number, worker_number, std::string("answer_variables"));
         // equality results variables
@@ -74,9 +73,9 @@ private:
         init_two_dimension_vec(comparison_diff_variables, task_number, label_class_number, std::string("comprison_diff"));
         init_two_dimension_vec(predicted_value_counts_variables, task_number, worker_number + 1, std::string("predicted_value_counts"));
         init_two_dimension_vec(predicted_value_equality_result_variables, task_number, worker_number, std::string("predicted_value_equality_result"));
-        // correct
-        init_one_dimension_vec(correct, task_number, std::string("correct"));
 
+        // set public number
+        this->pb.set_input_sizes(task_number + label_class_number + task_number);
     }
 
     void assign_public_inputs()
@@ -164,7 +163,7 @@ public:
                 for (int k = 0; k < label_class_number; ++k)
                 {
                     auto gadget_name = annotation + std::string("equality_gadget_") + std::to_string(i) + "_" + std::to_string(j) + "_" + std::to_string(k);
-                    // max label class number is 16
+                    // max label class number is 16 (4 bits)
                     row_y.push_back(EqualityCheckGadget<FieldT>(this->pb, answer_variables[i][j], label_class_variables[k], equality_results_variables[i][j][k], 4, gadget_name));
                 }
                 row_x.push_back(row_y);
@@ -177,7 +176,7 @@ public:
             std::vector<ComparisonGadget<FieldT>> row_x;
             for(int j = 0; j < label_class_number; j++) {
                 auto gadget_name = annotation + std::string("comparison_gadget_") + std::to_string(i) + "_" + std::to_string(j);
-                row_x.push_back(ComparisonGadget<FieldT>(this->pb, label_class_counts_variables[i][worker_number][j], label_class_counts_variables[i][worker_number][predicted_data[i]], comparison_result_variables[i][j], comparison_diff_variables[i][j], gadget_name)); 
+                row_x.push_back(ComparisonGadget<FieldT>(this->pb, label_class_counts_variables[i][worker_number][j], label_class_counts_variables[i][worker_number][predicted_data[i]], comparison_result_variables[i][j], comparison_diff_variables[i][j], gadget_name));
             }
             comparison_gadgets.push_back(row_x);
         }

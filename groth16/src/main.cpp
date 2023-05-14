@@ -9,31 +9,38 @@
 #include "MV_circuit.h"
 #include "common.h"
 #include "zk_proof_system/groth16.h"
+#include "libsnark_exporter.h"
 
 #include <libsnark/common/default_types/r1cs_gg_ppzksnark_pp.hpp>
 #include <libsnark/relations/constraint_satisfaction_problems/r1cs/examples/r1cs_examples.hpp>
 #include <libsnark/zk_proof_systems/ppzksnark/r1cs_gg_ppzksnark/r1cs_gg_ppzksnark.hpp>
 
-
-#define get_label_enum(x) (x == "1" ? 1 : x == "2" ? 2 : x == "3" ? 3 : x == "4" ? 4 : 0) // only consider the label in 5 enums
+#define get_label_enum(x) (x == "1" ? 1 : x == "2" ? 2 \
+                                      : x == "3"   ? 3 \
+                                      : x == "4"   ? 4 \
+                                                   : 0) // only consider the label in 5 enums
 
 using namespace libsnark;
 
-std::vector<std::vector<unsigned>> read_answer_data(const std::vector<std::vector<std::string>>& raw_answer_data) {
+std::vector<std::vector<unsigned>> read_answer_data(const std::vector<std::vector<std::string>> &raw_answer_data)
+{
     std::vector<std::vector<unsigned>> answer_data; // The transposed data to store the result
-    std::map<std::string, int> question_map; // Map question ids to indices
-    std::map<std::string, int> worker_map; // Map worker ids to indices
+    std::map<std::string, int> question_map;        // Map question ids to indices
+    std::map<std::string, int> worker_map;          // Map worker ids to indices
 
     // Create maps to map question ids and worker ids to indices
-    for (const auto& row : raw_answer_data) {
-        const std::string& question_id = row[0];
-        const std::string& worker_id = row[1];
+    for (const auto &row : raw_answer_data)
+    {
+        const std::string &question_id = row[0];
+        const std::string &worker_id = row[1];
 
-        if (question_map.count(question_id) == 0) {
+        if (question_map.count(question_id) == 0)
+        {
             question_map[question_id] = question_map.size();
         }
 
-        if (worker_map.count(worker_id) == 0) {
+        if (worker_map.count(worker_id) == 0)
+        {
             worker_map[worker_id] = worker_map.size();
         }
     }
@@ -44,17 +51,20 @@ std::vector<std::vector<unsigned>> read_answer_data(const std::vector<std::vecto
     answer_data.resize(num_questions, std::vector<unsigned>(num_workers));
 
     // Fill all elements as unlabeled
-    for (int i = 0; i < answer_data.size(); i++) {
-        for(int j = 0; j < answer_data[i].size(); j++) {
+    for (int i = 0; i < answer_data.size(); i++)
+    {
+        for (int j = 0; j < answer_data[i].size(); j++)
+        {
             answer_data[i][j] = EMPTY_LABEL;
         }
     }
 
     // Fill in the transposed data vector
-    for (const auto& row : raw_answer_data) {
-        const std::string& question_id = row[0];
-        const std::string& worker_id = row[1];
-        const std::string& label = row[2];
+    for (const auto &row : raw_answer_data)
+    {
+        const std::string &question_id = row[0];
+        const std::string &worker_id = row[1];
+        const std::string &label = row[2];
 
         int question_index = question_map[question_id];
         int worker_index = worker_map[worker_id];
@@ -75,21 +85,25 @@ std::vector<std::vector<unsigned>> read_answer_data(const std::vector<std::vecto
     return answer_data;
 }
 
-std::vector<unsigned> read_truth_data(std::vector<std::vector<std::string>> raw_answer_data, std::vector<std::vector<std::string>> raw_truth_data) {
+std::vector<unsigned> read_truth_data(std::vector<std::vector<std::string>> raw_answer_data, std::vector<std::vector<std::string>> raw_truth_data)
+{
     std::vector<unsigned> truth_data;
     std::map<std::string, int> question_map; // Map question ids to indices
-    std::map<std::string, int> worker_map; // Map worker ids to indices
+    std::map<std::string, int> worker_map;   // Map worker ids to indices
 
     // Create maps to map question ids and worker ids to indices
-    for (const auto& row : raw_answer_data) {
-        const std::string& question_id = row[0];
-        const std::string& worker_id = row[1];
+    for (const auto &row : raw_answer_data)
+    {
+        const std::string &question_id = row[0];
+        const std::string &worker_id = row[1];
 
-        if (question_map.count(question_id) == 0) {
+        if (question_map.count(question_id) == 0)
+        {
             question_map[question_id] = question_map.size();
         }
 
-        if (worker_map.count(worker_id) == 0) {
+        if (worker_map.count(worker_id) == 0)
+        {
             worker_map[worker_id] = worker_map.size();
         }
     }
@@ -99,9 +113,10 @@ std::vector<unsigned> read_truth_data(std::vector<std::vector<std::string>> raw_
     int num_workers = worker_map.size();
     truth_data.resize(num_questions);
 
-    for (const auto& row : raw_truth_data) {
-        const std::string& question_id = row[0];
-        const std::string& truth = row[1];
+    for (const auto &row : raw_truth_data)
+    {
+        const std::string &question_id = row[0];
+        const std::string &truth = row[1];
 
         int question_index = question_map[question_id];
 
@@ -118,29 +133,34 @@ std::vector<unsigned> read_truth_data(std::vector<std::vector<std::string>> raw_
     return truth_data;
 }
 
-std::vector<std::vector<std::string>> read_csv_dataset(const std::string& filename) {
+std::vector<std::vector<std::string>> read_csv_dataset(const std::string &filename)
+{
     // The two-dimensional vector to store the data
-    std::vector<std::vector<std::string>> read_data; 
+    std::vector<std::vector<std::string>> read_data;
     std::ifstream file(filename);
 
-    if (!file.is_open()) {
+    if (!file.is_open())
+    {
         throw std::runtime_error("Error: Failed to open file.");
     }
 
     std::string line;
     bool jump_header = false;
-    while (std::getline(file, line)) {
+    while (std::getline(file, line))
+    {
         std::istringstream ss(line);
         std::vector<std::string> row;
         std::string value;
 
         // jump for table header
-        if (jump_header == false) {
+        if (jump_header == false)
+        {
             jump_header = true;
             continue;
         }
 
-        while (std::getline(ss, value, ',')) {
+        while (std::getline(ss, value, ','))
+        {
             value.erase(std::remove(value.begin(), value.end(), '\r'), value.end());
             row.push_back(value);
         }
@@ -154,7 +174,8 @@ std::vector<std::vector<std::string>> read_csv_dataset(const std::string& filena
 }
 
 template <typename ppT>
-void algo_MV(std::vector<std::vector<unsigned>>&answer_data, std::vector<unsigned>& truth_data) {
+void algo_MV(std::vector<std::vector<unsigned>> &answer_data, std::vector<unsigned> &truth_data)
+{
     typedef libff::Fr<ppT> FieldT;
 
     std::cerr << "Task number: " << answer_data.size() << std::endl;
@@ -173,18 +194,53 @@ void algo_MV(std::vector<std::vector<unsigned>>&answer_data, std::vector<unsigne
     majorityVoteCircuit.generate_r1cs_witness();
 
     std::cerr << "Constraints number: " << pb.num_constraints() << std::endl;
+    std::cerr << "Public input number: " << pb.num_inputs() << std::endl;
+    std::cerr << "Witness number: " << pb.auxiliary_input().size() << std::endl;
     std::cerr << "Variable number: " << pb.num_variables() << std::endl;
     std::cerr << "Protoboard satisfied: " << pb.is_satisfied() << std::endl;
 
-    run_r1cs_gg_ppzksnark<ppT>(pb, "zkTI_MV_proof");
+    // export .zkif file
+    string circuit_header_name = "header.zkif";
+    string constraints_name = "constraints.zkif";
+    string witness_name = "witness.zkif";
+    string circuit_name = "MajorityVote";
+
+    auto ch_builder = serialize_circuit_header(pb, circuit_name);
+    {
+        std::ofstream out(circuit_header_name, ios::binary);
+        char *begin = (char *)ch_builder.GetBufferPointer();
+        out.write(reinterpret_cast<char *>(begin), ch_builder.GetSize());
+        out.close();
+    }
+
+    const CircuitHeader *ch = read_circuit_header((char *)ch_builder.GetBufferPointer());
+
+    auto cstr_builder = serialize_protoboard_constraints(ch, pb);
+    {
+        std::ofstream out(constraints_name, ios::binary);
+        char *begin = (char *)cstr_builder.GetBufferPointer();
+        out.write(reinterpret_cast<char *>(begin), cstr_builder.GetSize());
+        out.close();
+    }
+
+    auto wtns_builder = serialize_protoboard_local_assignment(ch, pb);
+    {
+        std::ofstream out(witness_name, ios::binary);
+        char *begin = (char *)wtns_builder.GetBufferPointer();
+        out.write(reinterpret_cast<char *>(begin), wtns_builder.GetSize());
+        out.close();
+    }
+
+    run_r1cs_gg_ppzksnark<ppT>(pb, "MV_proof");
 }
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv)
+{
     const std::string answer_file = argv[1];
     const std::string truth_file = argv[2];
 
-    std::vector<std::vector<std::string>> raw_answer_data = read_csv_dataset(answer_file); 
-    std::vector<std::vector<std::string>> raw_truth_data = read_csv_dataset(truth_file); 
+    std::vector<std::vector<std::string>> raw_answer_data = read_csv_dataset(answer_file);
+    std::vector<std::vector<std::string>> raw_truth_data = read_csv_dataset(truth_file);
     std::vector<std::vector<unsigned>> answer_data = read_answer_data(raw_answer_data);
     std::vector<unsigned> truth_data = read_truth_data(raw_answer_data, raw_truth_data);
 
