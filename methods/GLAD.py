@@ -5,9 +5,8 @@ import sys
 import numpy as np
 from scipy.optimize import minimize
 
-
 class GLAD:
-    
+
     def __init__(self, e2wl, w2el, label_set):
         self.e2wl = e2wl
         self.w2el = w2el
@@ -74,12 +73,16 @@ class GLAD:
                 weight = math.log(prob)
                 for (worker, label) in worker_label_set:
                     # log[p(Lij=Zj|alpha,beta)]
-                    logsigma = self.logsigmoid(self.alpha[worker] * self.expbeta(self.beta[example]))
+                    logsigma = self.logsigmoid(
+                        self.alpha[worker] * self.expbeta(self.beta[example]))
                     # log[1-p(Lij=Zj|alpha,beta)]
-                    logoneminussigma = self.logoneminussigmoid(self.alpha[worker] * self.expbeta(self.beta[example]))
+                    logoneminussigma = self.logoneminussigmoid(
+                        self.alpha[worker] * self.expbeta(self.beta[example]))
                     delta = self.kronecker_delta(label, tlabel)
-                    # weight = weight + delta * logsigma + (1 - delta) * (logoneminussigma - math.log(len(label_set) - 1))
-                    weight = weight + delta * logsigma + (1 - delta) * logoneminussigma
+                    weight = weight + delta * logsigma + \
+                        (1 - delta) * (logoneminussigma -
+                                       math.log(len(label_set) - 1))
+                    # weight = weight + delta * logsigma + (1 - delta) * logoneminussigma
 
                 if weight < math.log(sys.float_info.min):
                     lpd[tlabel] = 0
@@ -105,20 +108,25 @@ class GLAD:
             dQb = 0
             for (worker, label) in worker_label_set:
                 for tlabel in self.prior.keys():
-                    sigma = self.sigmoid(self.alpha[worker] * self.expbeta(self.beta[example]))
+                    sigma = self.sigmoid(
+                        self.alpha[worker] * self.expbeta(self.beta[example]))
                     delta = self.kronecker_delta(label, tlabel)
-                    dQb = dQb + self.e2lpd[example][tlabel] * (delta - sigma) * self.alpha[worker] * self.expbeta(
-                        self.beta[example])
-            self.dQbeta[example] = dQb - (self.beta[example] - self.priorbeta[example])
+                    dQb = dQb + self.e2lpd[example][tlabel] * (
+                        (delta - sigma) * self.alpha[worker] + (1 - delta) * math.log(len(label_set)-1))
+            # self.dQbeta[example] = dQb - (self.beta[example] - self.priorbeta[example])
+            self.dQbeta[example] = dQb
 
         for worker, example_label_set in self.w2el.items():
             dQa = 0
             for (example, label) in example_label_set:
                 for tlabel in self.prior.keys():
-                    sigma = self.sigmoid(self.alpha[worker] * self.expbeta(self.beta[example]))
+                    sigma = self.sigmoid(
+                        self.alpha[worker] * self.expbeta(self.beta[example]))
                     delta = self.kronecker_delta(label, tlabel)
-                    dQa = dQa + self.e2lpd[example][tlabel] * (delta - sigma) * self.expbeta(self.beta[example])
-            self.dQalpha[worker] = dQa - (self.alpha[worker] - self.prioralpha[worker])
+                    dQa = dQa + self.e2lpd[example][tlabel] * ((delta - sigma) * self.expbeta(
+                        self.beta[example]) + (1 - delta) * math.log(len(label_set) - 1))
+            # self.dQalpha[worker] = dQa - (self.alpha[worker] - self.prioralpha[worker])
+            self.dQalpha[worker] = dQa
 
     def computeQ(self):
 
@@ -126,24 +134,29 @@ class GLAD:
         # the expectation of examples given priors, alpha and beta
         for worker, example_label_set in self.w2el.items():
             for (example, label) in example_label_set:
-                logsigma = self.logsigmoid(self.alpha[worker] * self.expbeta(self.beta[example]))
-                logoneminussigma = self.logoneminussigmoid(self.alpha[worker] * self.expbeta(self.beta[example]))
+                logsigma = self.logsigmoid(
+                    self.alpha[worker]*self.expbeta(self.beta[example]))
+                logoneminussigma = self.logoneminussigmoid(
+                    self.alpha[worker]*self.expbeta(self.beta[example]))
                 for tlabel in self.prior.keys():
                     delta = self.kronecker_delta(label, tlabel)
-                    Q = Q + self.e2lpd[example][tlabel] * (delta * logsigma + (1 - delta) * logoneminussigma)
+                    Q = Q + self.e2lpd[example][tlabel]*(delta*logsigma+(
+                        1-delta)*(logoneminussigma-math.log(len(label_set)-1)))
 
         # the expectation of the sum of priors over all examples
         for example in self.e2wl.keys():
             for tlabel, prob in self.prior.items():
                 Q = Q + self.e2lpd[example][tlabel] * math.log(prob)
+
         # Gaussian (standard normal) prior for alpha
-        for worker in self.w2el.keys():
-            Q = Q + math.log(
-                (pow(2 * math.pi, -0.5)) * math.exp(-pow((self.alpha[worker] - self.prioralpha[worker]), 2) / 2))
-        # Gaussian (standard normal) prior for beta
-        for example in self.e2wl.keys():
-            Q = Q + math.log(
-                (pow(2 * math.pi, -0.5)) * math.exp(-pow((self.beta[example] - self.priorbeta[example]), 2) / 2))
+        # for worker in self.w2el.keys():
+        #     Q = Q + math.log(
+        #         (pow(2 * math.pi, -0.5)) * math.exp(-pow((self.alpha[worker] - self.prioralpha[worker]), 2) / 2))
+        # # Gaussian (standard normal) prior for beta
+        # for example in self.e2wl.keys():
+        #     Q = Q + math.log(
+        #         (pow(2 * math.pi, -0.5)) * math.exp(-pow((self.beta[example] - self.priorbeta[example]), 2) / 2))
+
         return Q
 
     def optimize_f(self, x):
@@ -174,10 +187,12 @@ class GLAD:
         der = np.zeros_like(x)
         i = 0
         for worker in self.workers:
-            der[i] = -self.dQalpha[worker]  # Flip the sign since we want to minimize
+            # Flip the sign since we want to minimize
+            der[i] = -self.dQalpha[worker]
             i = i + 1
         for example in self.examples:
-            der[i] = -self.dQbeta[example]  # Flip the sign since we want to minimize
+            # Flip the sign since we want to minimize
+            der[i] = -self.dQbeta[example]
             i = i + 1
 
         return der
@@ -190,8 +205,17 @@ class GLAD:
         for example in self.examples:
             x0.append(self.beta[example])
 
-        minimize(self.optimize_f, x0, method='CG', jac=self.optimize_df, tol=0.01,
-                       options={'disp': False, 'maxiter': 25})
+        minimize(self.optimize_f, x0, method='CG', jac=self.optimize_df, tol=0.0001,
+                 options={'disp': True, 'maxiter':  100})
+        
+        # test gradient
+        x = []
+        for worker in self.workers:
+            x.append(self.alpha[worker])
+        for example in self.examples:
+            x.append(self.beta[example])
+        
+        print(self.optimize_df(x))
 
     # initialization
     def Init_prior(self):
@@ -222,20 +246,20 @@ class GLAD:
         # E-step
         # self.Update_e2lpd()
         # Q = self.computeQ()
-        
+
         while True:
             # E-step
             self.Update_e2lpd()
             Q = self.computeQ()
             print(Q)
-            
+
             lastQ = Q
 
             # M-step
             self.Update_alpha_beta()
             Q = self.computeQ()
             print(Q)
-        
+
             if (math.fabs((Q - lastQ) / lastQ)) < threshold:
                 break
 

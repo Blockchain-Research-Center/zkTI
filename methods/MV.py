@@ -139,9 +139,10 @@ def get_worker_quality(e2lpd={},  w2el={}):
 if __name__ == "__main__":
     datafile = sys.argv[1]
     e2wl,w2el,label_set = gete2wlandw2el(datafile)
+
     e2lpd = MV(e2wl,w2el,label_set).Run()
-    print("e2lpd: ", e2lpd)
-    print("......")
+    # print("e2lpd: ", e2lpd)
+    # print("......")
 
     truthfile = sys.argv[2]
     accuracy = getaccuracy(truthfile, e2lpd, label_set)

@@ -2,9 +2,11 @@ import copy
 import sys
 import random
 import csv
+from math import *
+from math import e as ee
+from float import Float
 
-
-class ZenClowd:
+class ZenCrowd:
 
     def __init__(self, e2wl, w2el, label_set):
 
@@ -27,13 +29,13 @@ class ZenClowd:
         if workers=={}:
             workers=self.w2el.keys()
             for worker in workers:
-                w2cm[worker]=0.8
+                w2cm[worker] = Float(3435973836,32,0.8)
         else:
             for worker in workers:
                 if worker not in w2cm: # workers --> w2cm
-                    w2cm[worker] = 0.8
+                    w2cm[worker] = Float(3435973836,32,0.8)
                 else:
-                    w2cm[worker]=workers[worker]
+                    w2cm[worker] = workers[worker]
 
         return w2cm
 
@@ -43,27 +45,25 @@ class ZenClowd:
         for e, workerlabels in e2wl.items():
             e2lpd[e]={}
             for label in self.label_set:
-                e2lpd[e][label]=1.0  #l2pd[label]
-
+                e2lpd[e][label]= Float(2**31,31, 1.0 )
+                
             for worker,label in workerlabels:
                 for candlabel in self.label_set:
                     if label==candlabel:
-                        e2lpd[e][candlabel]*=w2cm[worker]
+                        e2lpd[e][candlabel] *= (w2cm[worker])
                     else:
-                        e2lpd[e][candlabel]*=(1-w2cm[worker])*1.0/(len(self.label_set)-1)
+                        e2lpd[e][candlabel] *= ((w2cm[worker].one_sub())/(len(self.label_set)-1))
 
-            sums=0
+
+            
+            sums = Float(2**31,256, 1e-100 )
             for label in self.label_set:
-                sums+=e2lpd[e][label]
+                sums += e2lpd[e][label]
+            
 
-            if sums==0:
-                for label in self.label_set:
-                    e2lpd[e][label]=1.0/self.len(self.label_set)
-            else:
-                for label in self.label_set:
-                    e2lpd[e][label]=e2lpd[e][label]*1.0/sums
+            for label in self.label_set:
+                e2lpd[e][label] = e2lpd[e][label] / sums ## average
 
-        #print e2lpd
         return e2lpd
 
 
@@ -72,34 +72,35 @@ class ZenClowd:
         l2pd = {}
 
         for label in self.label_set:
-            l2pd[label]=0
+            l2pd[label] = Float(2**31,256, 0 )
         for e in e2lpd:
             for label in e2lpd[e]:
-                l2pd[label]+=e2lpd[e][label]
+                l2pd[label] += e2lpd[e][label]
 
         for label in self.label_set:
-            l2pd[label]=l2pd[label]*1.0/len(e2lpd)
+            l2pd[label] = l2pd[label] / len(e2lpd)
 
         return l2pd
 
 
     def Computew2cm(self, w2el, e2lpd):
-        w2cm={}
+        w2cm = {}
         for worker,examplelabels in w2el.items():
-            w2cm[worker]=0.0
+            w2cm[worker] = Float(2**31,256, 0 )
             for e,label in examplelabels:
-                w2cm[worker]+=e2lpd[e][label]*1.0/len(examplelabels)
-
+                w2cm[worker] += e2lpd[e][label] / len(examplelabels)
         return w2cm
 
 
     def Run(self, iter = 5, workers={}):
-        l2pd = self.InitPj()
+        # l2pd = self.InitPj()
         w2cm = self.Initw2cm(workers)
         while iter>0:
             # E-step
             e2lpd = self.ComputeTij(self.e2wl, {}, w2cm)
-
+            # for k in e2lpd:
+            # for v in e2lpd[k]:
+            #     real[k][v] = e2lpd[k][v].value
             # M-step
             #l2pd = self.ComputePj(e2lpd)
             w2cm = self.Computew2cm(self.w2el, e2lpd)
@@ -108,7 +109,15 @@ class ZenClowd:
 
             iter -= 1
 
-        return e2lpd, w2cm
+        real = {}
+        for k in e2lpd:
+            real[k] = {'0':0,'1':0}
+            for v in e2lpd[k]:
+                real[k][v] = float("%s"%e2lpd[k][v])
+                # print(float("%s"%e2lpd[k][v]),e2lpd[k][v].value)
+                
+        
+        return real, w2cm
 
 def getaccuracy(truthfile, e2lpd, label_set):
     e2truth = {}
@@ -170,7 +179,7 @@ def gete2wlandw2el(datafile):
 
         if label not in label_set:
             label_set.append(label)
-
+    # print(len(e2wl),len(w2el),len(label_set))
     return e2wl,w2el,label_set
 
 if __name__=='__main__':
@@ -179,13 +188,12 @@ if __name__=='__main__':
     # l2pd   label_to_priority_probability = {}
     datafile = sys.argv[1]
     e2wl,w2el,label_set = gete2wlandw2el(datafile)
-    e2lpd, w2cm= ZenClowd(e2wl,w2el,label_set).Run()
-    print(w2cm)
-    print("e2lpd: ", e2lpd)
-
+    e2lpd, w2cm= ZenCrowd(e2wl,w2el,label_set).Run()
+    # print(w2cm)
+    # print(e2lpd)
     truthfile = sys.argv[2]
     accuracy = getaccuracy(truthfile, e2lpd, label_set)
     print("accuracy: ", accuracy)
 
 
-    
+# 0.7314814814814815
