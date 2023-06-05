@@ -20,7 +20,7 @@ set(
 
 set(
   OPT_FLAGS
-  "-g"
+  "-g -O0"
   CACHE
   STRING
   "Override C++ compiler optimization flags"
@@ -54,7 +54,7 @@ if(CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 
    # Default optimizations flags (to override, use -DOPT_FLAGS=...)
   if("${OPT_FLAGS}" STREQUAL "")
-    set(OPT_FLAGS "-ggdb3 -O0 -march=native -mtune=native")
+    set(OPT_FLAGS "-g -O0 -march=native -mtune=native")
   endif()
 endif()
 

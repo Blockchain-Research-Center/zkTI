@@ -1,8 +1,10 @@
 #ifndef __zkTI_gadgets_h
 #define __zkTI_gadgets_h
 
-#include <common.h>
+#include "../common.h"
 
+// This gadget is used when x, y is constrainted by former constraints
+// and we compare x, y in the field
 template <typename FieldT>
 class ComparisonGadget: public gadget<FieldT> {
 
@@ -20,8 +22,10 @@ public:
     ~ComparisonGadget() {}
 
     void generate_r1cs_constraints() {
-        // 1 y=x+d 0 x=
+        // 1 y=x+d 0 x=y+d
         add_r1cs(2 * comparison_result - 1, y - x, diff);
+        // r is a bit
+        add_r1cs((1 - comparison_result), comparison_result, 0);
     }
 
     void generate_r1cs_witness() {}
@@ -51,7 +55,10 @@ public:
             int base = i * n_bit_per_var;
             auto sum = linear_combination<FieldT>(decompositions[base + n_bit_per_var - 1]);
             for (int j = n_bit_per_var - 2; j >= 0; --j) {
-                sum = sum + decompositions[base + j] * FieldT(1ULL << (n_bit_per_var - j - 1));
+                mpz_t tmp;
+                mpz_init_set_ui(tmp, 1U);
+                mpz_mul_2exp(tmp, tmp, n_bit_per_var - j - 1);
+                sum = sum + decompositions[base + j] * FieldT(libff::bigint<__limbs>(tmp));
             }
             add_r1cs(sum, 1, vars[i]);
         }
@@ -63,7 +70,6 @@ public:
     }
 
     void generate_r1cs_witness() {
-        // nothing to do here assuming decomposition is calculated outside, maybe it's better to put it here
         return;
     }
 };

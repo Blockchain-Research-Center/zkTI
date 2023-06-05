@@ -6,7 +6,9 @@
 #include <numeric>
 
 #include "methods/MV.h"
-#include "MV_circuit.h"
+#include "methods/ZenCrowd.h"
+#include "circuits/MV_circuit.h"
+#include "circuits/ZenCrowd_circuit.h"
 #include "common.h"
 #include "zk_proof_system/groth16.h"
 #include "libsnark_exporter.h"
@@ -177,19 +179,20 @@ template <typename ppT>
 void algo_MV(std::vector<std::vector<unsigned>> &answer_data, std::vector<unsigned> &truth_data)
 {
     typedef libff::Fr<ppT> FieldT;
+    default_r1cs_gg_ppzksnark_pp::init_public_params();
 
     std::cerr << "Task number: " << answer_data.size() << std::endl;
     std::cerr << "Worker number: " << answer_data[0].size() << std::endl;
     std::cerr << "Label number: " << answer_data.size() * answer_data[0].size() << std::endl;
 
     MV mv = MV(answer_data, truth_data);
+    string circuit_name = "MV";
     std::cerr << "Run the Truth Inference algorithm: " << std::endl;
     std::vector<unsigned> result = mv.run();
     std::cerr << "Accuracy: " << mv.get_accuracy(result) << std::endl;
 
-    // Groth16 zk-SNARK
     protoboard<FieldT> pb;
-    MajorityVoteCircuit<FieldT> majorityVoteCircuit = MajorityVoteCircuit<FieldT>(pb, mv, result, "Majority_Vote_Circuit");
+    MajorityVoteCircuit<FieldT> majorityVoteCircuit = MajorityVoteCircuit<FieldT>(pb, mv, result, circuit_name);
     majorityVoteCircuit.generate_r1cs_constraints();
     majorityVoteCircuit.generate_r1cs_witness();
 
@@ -200,38 +203,48 @@ void algo_MV(std::vector<std::vector<unsigned>> &answer_data, std::vector<unsign
     std::cerr << "Protoboard satisfied: " << pb.is_satisfied() << std::endl;
 
     // export .zkif file
-    string circuit_header_name = "header.zkif";
-    string constraints_name = "constraints.zkif";
-    string witness_name = "witness.zkif";
-    string circuit_name = "MajorityVote";
+    std::cerr << "Start exporting circuit into .zkif file: "<< std::endl;
+    zkifExporter<FieldT> exporter = zkifExporter<FieldT>(circuit_name, pb);
+    exporter.export_protoboard();
 
-    auto ch_builder = serialize_circuit_header(pb, circuit_name);
-    {
-        std::ofstream out(circuit_header_name, ios::binary);
-        char *begin = (char *)ch_builder.GetBufferPointer();
-        out.write(reinterpret_cast<char *>(begin), ch_builder.GetSize());
-        out.close();
-    }
+    // Groth16 zk-SNARK
+    run_r1cs_gg_ppzksnark<ppT>(pb, circuit_name + "_proof");
+}
 
-    const CircuitHeader *ch = read_circuit_header((char *)ch_builder.GetBufferPointer());
+template <typename ppT>
+void algo_ZC(std::vector<std::vector<unsigned>> &answer_data, std::vector<unsigned> &truth_data)
+{
+    typedef libff::Fr<ppT> FieldT;
+    default_r1cs_gg_ppzksnark_pp::init_public_params();
 
-    auto cstr_builder = serialize_protoboard_constraints(ch, pb);
-    {
-        std::ofstream out(constraints_name, ios::binary);
-        char *begin = (char *)cstr_builder.GetBufferPointer();
-        out.write(reinterpret_cast<char *>(begin), cstr_builder.GetSize());
-        out.close();
-    }
+    std::cerr << "Task number: " << answer_data.size() << std::endl;
+    std::cerr << "Worker number: " << answer_data[0].size() << std::endl;
+    std::cerr << "Label number: " << answer_data.size() * answer_data[0].size() << std::endl;
 
-    auto wtns_builder = serialize_protoboard_local_assignment(ch, pb);
-    {
-        std::ofstream out(witness_name, ios::binary);
-        char *begin = (char *)wtns_builder.GetBufferPointer();
-        out.write(reinterpret_cast<char *>(begin), wtns_builder.GetSize());
-        out.close();
-    }
+    ZenCrowd zc = ZenCrowd(answer_data, truth_data);
+    string circuit_name = "ZC";
+    std::cerr << "Run the Truth Inference algorithm: " << std::endl;
+    std::vector<unsigned> result = zc.run();
+    std::cerr << "Accuracy: " << zc.get_accuracy(result) << std::endl;
 
-    run_r1cs_gg_ppzksnark<ppT>(pb, "MV_proof");
+    protoboard<FieldT> pb;
+    ZenCrowdCircuit<FieldT> zcCircuit = ZenCrowdCircuit<FieldT>(pb, zc, result, circuit_name);
+    zcCircuit.generate_r1cs_constraints();
+    zcCircuit.generate_r1cs_witness();
+
+    std::cerr << "Constraints number: " << pb.num_constraints() << std::endl;
+    std::cerr << "Public input number: " << pb.num_inputs() << std::endl;
+    std::cerr << "Witness number: " << pb.auxiliary_input().size() << std::endl;
+    std::cerr << "Variable number: " << pb.num_variables() << std::endl;
+    std::cerr << "Protoboard satisfied: " << pb.is_satisfied() << std::endl;
+
+    // // export .zkif file
+    // std::cerr << "Start exporting circuit into .zkif file: "<< std::endl;
+    // zkifExporter<FieldT> exporter = zkifExporter<FieldT>(circuit_name, pb);
+    // exporter.export_protoboard();
+
+    // // Groth16 zk-SNARK
+    // run_r1cs_gg_ppzksnark<ppT>(pb, circuit_name + "_proof");
 }
 
 int main(int argc, char **argv)
@@ -244,9 +257,11 @@ int main(int argc, char **argv)
     std::vector<std::vector<unsigned>> answer_data = read_answer_data(raw_answer_data);
     std::vector<unsigned> truth_data = read_truth_data(raw_answer_data, raw_truth_data);
 
-    default_r1cs_gg_ppzksnark_pp::init_public_params();
+    // std::cerr << "Run Groth16 zk-SNARK for zkTI MV algorithm: " << std::endl;
+    // algo_MV<default_r1cs_gg_ppzksnark_pp>(answer_data, truth_data);
+    // std::cerr << "Finish." << std::endl;
 
-    std::cerr << "Run Groth16 zk-SNARK for zkTI using MV algorithm: " << std::endl;
-    algo_MV<default_r1cs_gg_ppzksnark_pp>(answer_data, truth_data);
+    std::cerr << "Run Groth16 zk-SNARK for zkTI ZC algorithm: " << std::endl;
+    algo_ZC<default_r1cs_gg_ppzksnark_pp>(answer_data, truth_data);
     std::cerr << "Finish." << std::endl;
 }

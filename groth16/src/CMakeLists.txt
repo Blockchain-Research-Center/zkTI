@@ -13,6 +13,4 @@ target_include_directories(
         zkTI PUBLIC include ${DEPENDS_DIR}/libsnark ${DEPENDS_DIR}/libsnark/depends/libfqfft
 )
 
-# SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 -march=native -mavx2 -faligned-new -lstdc++ -DNDEBUG")
-
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -ggdb -O0 -march=native -mavx2 -faligned-new -lstdc++")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -O0 -march=native -mavx2 -faligned-new -lstdc++")

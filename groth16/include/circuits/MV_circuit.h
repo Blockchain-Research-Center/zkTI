@@ -3,15 +3,12 @@
 
 #include <libff/common/default_types/ec_pp.hpp>
 #include <libsnark/zk_proof_systems/ppzksnark/r1cs_gg_ppzksnark/r1cs_gg_ppzksnark.hpp>
-#include <libsnark/gadgetlib1/gadgets/merkle_tree/merkle_tree_check_read_gadget.hpp>
-#include <libsnark/gadgetlib1/gadgets/hashes/sha256/sha256_gadget.hpp>
 
-#include "methods/MV.h"
-#include "gadgets.h"
+#include "../methods/MV.h"
+#include "./gadgets.h"
+#include "../common.h"
 
 using namespace libsnark;
-
-#define add_r1cs(x, y, z) this->pb.add_r1cs_constraint(r1cs_constraint<FieldT>(x, y, z))
 
 template <typename FieldT>
 class MajorityVoteCircuit : public gadget<FieldT>
@@ -78,6 +75,7 @@ private:
         this->pb.set_input_sizes(task_number + label_class_number + task_number);
     }
 
+    // assign values for public inputs
     void assign_public_inputs()
     {
         // predicted variables
