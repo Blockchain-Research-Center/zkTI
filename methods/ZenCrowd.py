@@ -98,7 +98,7 @@ class ZenCrowd:
         return w2cm
 
 
-    def Run(self, iter = 1, workers={}):
+    def Run(self, iter = 5, workers={}):
         l2pd = self.InitPj()
         w2cm = self.Initw2cm(workers)
         while iter>0:

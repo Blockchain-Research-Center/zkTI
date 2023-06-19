@@ -107,6 +107,7 @@ public:
     std::cout << "Serializing circuit header..." << std::endl;
     auto ch_builder = serialize_circuit_header();
     std::cout << "Export circuit header into file " << circuit_name + "." + circuit_header_name << std::endl;
+    std::cout << "Size: " << ch_builder.GetSize() << std::endl;
     export_builder_to_file(circuit_name + "." + circuit_header_name, (char*)ch_builder.GetBufferPointer(), ch_builder.GetSize());
 
     const CircuitHeader *ch = read_circuit_header((char *)ch_builder.GetBufferPointer());
@@ -115,16 +116,18 @@ public:
     std::cout << "Serializing constraints..." << std::endl;
     auto cstr_builder = serialize_protoboard_constraints();
     std::cout << "Export constraints into file " << circuit_name + "." + constraints_name << std::endl;
+    std::cout << "Size: " << cstr_builder.GetSize() << std::endl;
     export_builder_to_file(circuit_name + "." + constraints_name, (char*)cstr_builder.GetBufferPointer(), cstr_builder.GetSize());
 
     std::cout << "Serializing witnesses..." << std::endl;
     auto wtns_builder = serialize_protoboard_local_assignment();
     std::cout << "Export witnesses into file " << circuit_name + "." + witness_name << std::endl;
+    std::cout << "Size: " << wtns_builder.GetSize() << std::endl;
     export_builder_to_file(circuit_name + "." + witness_name, (char*)wtns_builder.GetBufferPointer(), wtns_builder.GetSize());
   }
 
 private:
-  void export_builder_to_file(string file_name, char* buffer, int size) 
+  void export_builder_to_file(string file_name, char* buffer, size_t size) 
   {
     std::ofstream out(file_name, ios::binary);
     out.write(buffer, size);

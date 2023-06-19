@@ -161,8 +161,8 @@ public:
                 for (int k = 0; k < label_class_number; ++k)
                 {
                     auto gadget_name = annotation + std::string("equality_gadget_") + std::to_string(i) + "_" + std::to_string(j) + "_" + std::to_string(k);
-                    // max label class number is 16 (4 bits)
-                    row_y.push_back(EqualityCheckGadget<FieldT>(this->pb, answer_variables[i][j], label_class_variables[k], equality_results_variables[i][j][k], 4, gadget_name));
+                    // max label class number is 4 (2 bits)
+                    row_y.push_back(EqualityCheckGadget<FieldT>(this->pb, answer_variables[i][j], label_class_variables[k], equality_results_variables[i][j][k], 2, gadget_name));
                 }
                 row_x.push_back(row_y);
             }
@@ -185,7 +185,7 @@ public:
             for (int j = 0; j < worker_number; ++j)
             {
                 auto gadget_name = annotation + std::string("predicted_value_equality_gadget_") + std::to_string(i) + "_" + std::to_string(j);
-                row_x.push_back(EqualityCheckGadget<FieldT>(this->pb, answer_variables[i][j], predicted_class_variables[i], predicted_value_equality_result_variables[i][j], 4, gadget_name));
+                row_x.push_back(EqualityCheckGadget<FieldT>(this->pb, answer_variables[i][j], predicted_class_variables[i], predicted_value_equality_result_variables[i][j], 2, gadget_name));
             }
             predicted_value_equality_gadgets.push_back(row_x);
         }

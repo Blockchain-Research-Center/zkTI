@@ -44,7 +44,7 @@ public:
                              int n_vars_, int n_bit_per_var_, const std::string &annotation = "")
             : gadget<FieldT>(pb, annotation) {
         vars = vars_;
-        decompositions = decompositions_;
+        decompositions = decompositions_; 
         n_vars = n_vars_;
         n_bit_per_var = n_bit_per_var_;
     }
@@ -70,7 +70,7 @@ public:
     }
 
     void generate_r1cs_witness() {
-        return;
+        
     }
 };
 
@@ -263,6 +263,118 @@ public:
         return;
     }
 
+};
+
+// check a, b is a permutation of a', b'
+template<typename FieldT>
+class PermutationGadget : public gadget<FieldT> {
+private:
+    pb_variable <FieldT> *original_values, *permuted_values;
+    pb_variable <FieldT> *cumulated_prod_original, *cumulated_prod_permuted; // helper variable to calculate the product.
+    const pb_variable <FieldT> &challenge_point;
+
+    int size;
+public:
+
+    PermutationGadget(protoboard <FieldT> &pb, pb_variable <FieldT> *original_values_,
+                      pb_variable <FieldT> *permuted_values_, const pb_variable <FieldT> &challenge_point_, int size_,
+                      const std::string &annotation = "")
+            : gadget<FieldT>(pb, annotation), challenge_point(challenge_point_) {
+        original_values = original_values_;
+        permuted_values = permuted_values_;
+        size = size_;
+
+        _init_pb_array(pb, cumulated_prod_original, size - 1, annotation + std::string("/cumulated_prod_original"));
+        _init_pb_array(pb, cumulated_prod_permuted, size - 1, annotation + std::string("/cumulated_prod_permuted"));
+    }
+
+    ~PermutationGadget() {
+        delete[] cumulated_prod_original;
+        delete[] cumulated_prod_permuted;
+    }
+
+    void generate_r1cs_constraints() {
+        add_r1cs(original_values[0] - challenge_point, original_values[1] - challenge_point,
+                 cumulated_prod_original[0]);
+        add_r1cs(permuted_values[0] - challenge_point, permuted_values[1] - challenge_point,
+                 cumulated_prod_permuted[0]);
+        for (int i = 1; i < size - 1; ++i) {
+            auto &z = cumulated_prod_original[i];
+            auto &x = cumulated_prod_original[i - 1];
+            auto &&y = original_values[i + 1] - challenge_point;
+            auto &zz = cumulated_prod_permuted[i];
+            auto &xx = cumulated_prod_permuted[i - 1];
+            auto &&yy = permuted_values[i + 1] - challenge_point;
+            add_r1cs(x, y, z);
+            add_r1cs(xx, yy, zz);
+        }
+
+        add_r1cs(cumulated_prod_original[size - 2], 1, cumulated_prod_permuted[size - 2]);
+    }
+
+    void generate_r1cs_witness() {
+        pb_eval(cumulated_prod_original[0]) =
+                (pb_eval(original_values[0]) - pb_eval(challenge_point)) * (pb_eval(original_values[1]) - pb_eval(challenge_point));
+        pb_eval(cumulated_prod_permuted[0]) =
+                (pb_eval(permuted_values[0]) - pb_eval(challenge_point)) * (pb_eval(permuted_values[1]) - pb_eval(challenge_point));
+
+        for (int i = 1; i < size - 1; ++i) {
+            pb_eval(cumulated_prod_original[i]) = pb_eval(cumulated_prod_original[i - 1])
+                                               * (pb_eval(original_values[i + 1]) - pb_eval(challenge_point));
+            pb_eval(cumulated_prod_permuted[i]) = pb_eval(cumulated_prod_permuted[i - 1])
+                                               * (pb_eval(permuted_values[i + 1]) - pb_eval(challenge_point));
+        }
+    }
+};
+
+// check <a_1, a_2> <b_1, b_2> is a permutation of <a_1', a_2'> <b_1', b_2'>
+template<typename FieldT>
+class PairwisePermutationGadget : public gadget<FieldT> {
+private:
+    int size;
+    const pb_variable <FieldT> &coef, &challenge_point;
+    pb_variable <FieldT> *a_1, *a_2, *b_1, *b_2;
+
+    pb_variable <FieldT> *a_combine, *b_combine;
+    PermutationGadget<FieldT> *permutationGadget;
+public:
+    PairwisePermutationGadget(protoboard <FieldT> &pb, pb_variable <FieldT> *a_1_, pb_variable <FieldT> *a_2_,
+                              pb_variable <FieldT> *b_1_, pb_variable <FieldT> *b_2_, const pb_variable <FieldT> &coef_,
+                              const pb_variable <FieldT> &challenge_point_, int size_,
+                              const std::string &annotation = "")
+            : gadget<FieldT>(pb, annotation), coef(coef_), challenge_point(challenge_point_) {
+        size = size_;
+        a_1 = a_1_;
+        a_2 = a_2_;
+        b_1 = b_1_;
+        b_2 = b_2_;
+        _init_pb_array(pb, a_combine, size, annotation + std::string("/a_combine"));
+        _init_pb_array(pb, b_combine, size, annotation + std::string("/b_combine"));
+        permutationGadget = new PermutationGadget<FieldT>(pb, a_combine, b_combine, challenge_point_, size_, annotation + std::string("/permutation_gadget"));
+    }
+
+    ~PairwisePermutationGadget() {
+        // delete[] a_combine;
+        // delete[] b_combine;
+        // delete permutationGadget;
+    }
+
+    void generate_r1cs_constraints() {
+        for (int i = 0; i < size; ++i) {
+            add_r1cs(coef, a_1[i], a_combine[i] - a_2[i]);
+            add_r1cs(coef, b_1[i], b_combine[i] - b_2[i]);
+        }
+        permutationGadget->generate_r1cs_constraints();
+    }
+
+    void generate_r1cs_witness() {
+        auto &x = pb_eval(coef);
+        for (int i = 0; i < size; ++i) {
+            pb_eval(a_combine[i]) = pb_eval(a_1[i]) * x + pb_eval(a_2[i]);
+            pb_eval(b_combine[i]) = pb_eval(b_1[i]) * x + pb_eval(b_2[i]);
+        }
+        permutationGadget->generate_r1cs_witness();
+    }
 };
 
 #endif

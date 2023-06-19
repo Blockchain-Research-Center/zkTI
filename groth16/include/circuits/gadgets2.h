@@ -79,7 +79,7 @@ public:
         num_decomposition->generate_r1cs_witness();
     }
 
-    void generate_r1cs_witness(mpz_t &x, mpz_t &y) {
+    void generate_r1cs_witness(mpz_t x, mpz_t y) {
         // num
         mpz_t x_value, y_value, num_value;
         mpz_init(num_value);
@@ -254,7 +254,7 @@ public:
         add_r1cs(lessthan_result, 1, 0);
     }
 
-    void generate_r1cs_witness(Float &x, Float &y, Float &result) {
+    void generate_r1cs_witness(Float x, Float y, Float result) {
         // result_v decomposed
         for (int i = 0; i < __omega; ++i) {
             this->pb.val(result_v_decomposed[i]) = (result.value >> (__omega - i - 1)) & 1U;
@@ -356,7 +356,7 @@ public:
         add_r1cs(lessthan_result, 1, 0);
     }
 
-    void generate_r1cs_witness(Float &x, Float &y, Float &result) {
+    void generate_r1cs_witness(Float x, Float y, Float result) {
         // result_v decomposed
         for (int i = 0; i < __omega; ++i) {
             this->pb.val(result_v_decomposed[i]) = (result.value >> (__omega - i - 1)) & 1U;
@@ -399,6 +399,7 @@ class FloatAddGadget: public gadget<FieldT> {
 public:
     pb_variable<FieldT> result_v, result_s;
     pb_variable<FieldT> x_v, x_s, y_s, y_v;
+    pb_variable<FieldT> *a_1, *a_2, *b_1, *b_2;
 
     pb_variable<FieldT> theta; // y_s - result_s
     pb_variable<FieldT> theta_;
@@ -422,18 +423,25 @@ public:
     pb_variable<FieldT> lessthan_result;
     LessThanGadget<FieldT> *lessthan_checker;
     ExponentialGadget<FieldT> *exponential_checker;
+    PairwisePermutationGadget<FieldT> *pairwise_permutation_checker;
 
     const std::vector<pb_variable<FieldT>> &multiplies;
+    const pb_variable<FieldT> &rand_point, &rand_coef;
 
     FloatAddGadget() {
 
     }
 
-    FloatAddGadget(protoboard <FieldT> &pb, pb_variable <FieldT> &x_v, pb_variable <FieldT> &x_s, pb_variable <FieldT> &y_v, pb_variable <FieldT> &y_s, pb_variable <FieldT> &result_v, pb_variable <FieldT> &result_s, std::vector<pb_variable<FieldT>> &multiplies, const std::string &annotation = "")
-            : gadget<FieldT>(pb, annotation), x_v(x_v), x_s(x_s), y_v(y_v), y_s(y_s), result_v(result_v), result_s(result_s), multiplies(multiplies) {
+    FloatAddGadget(protoboard <FieldT> &pb, pb_variable <FieldT> &x_v, pb_variable <FieldT> &x_s, pb_variable <FieldT> &y_v, pb_variable <FieldT> &y_s, pb_variable <FieldT> &result_v, pb_variable <FieldT> &result_s, std::vector<pb_variable<FieldT>> &multiplies, const pb_variable <FieldT> &rand_point, const pb_variable <FieldT> &rand_coef, const std::string &annotation = "")
+            : gadget<FieldT>(pb, annotation), x_v(x_v), x_s(x_s), y_v(y_v), y_s(y_s), result_v(result_v), result_s(result_s), multiplies(multiplies), rand_point(rand_point), rand_coef(rand_coef) {
         // init pb val
         _init_pb_array(pb, result_v_decomposed, __omega, annotation + std::string("result_v_decomposed"));
         _init_pb_array(pb, e_decomposed, __max_delta_bit + 1, annotation + std::string("e_decomposed"));
+        _init_pb_array(pb, a_1, 2, annotation + std::string("a_1"));
+        _init_pb_array(pb, a_2, 2, annotation + std::string("a_2"));
+        _init_pb_array(pb, b_1, 2, annotation + std::string("b_1"));
+        _init_pb_array(pb, b_2, 2, annotation + std::string("b_2"));
+
         theta.allocate(pb, annotation + std::string("theta"));
         theta_.allocate(pb, annotation + std::string("theta_"));
         lambda.allocate(pb, annotation + std::string("lambda"));
@@ -445,23 +453,33 @@ public:
         d.allocate(pb, annotation + std::string("d"));
         e.allocate(pb, annotation + std::string("e"));
         f.allocate(pb, annotation + std::string("f"));
-        result_v_decomposition = new DecompositionCheckGadget<FieldT>(pb, &result_v, result_v_decomposed, 1, __omega, annotation + std::string("result_v_decomposition"));
         lessthan_result.allocate(pb, annotation + std::string("lessthan_result"));
+
+        result_v_decomposition = new DecompositionCheckGadget<FieldT>(pb, &result_v, result_v_decomposed, 1, __omega, annotation + std::string("result_v_decomposition"));
         lessthan_checker = new LessThanGadget<FieldT>(pb, d, b, lessthan_result, 2 * __omega, annotation + std::string("lessthan_checker"));
         exponential_checker = new ExponentialGadget<FieldT>(pb, delta_, a, multiplies, __scale_n_bit, annotation + std::string("exponential_checker"));
         e_decomposition = new DecompositionCheckGadget<FieldT>(pb, &e, e_decomposed, 1, __max_delta_bit + 1, annotation + std::string("e_decomposition"));
+        pairwise_permutation_checker = new PairwisePermutationGadget<FieldT>(pb, a_1, a_2, b_1, b_2, rand_coef, rand_point, 2,  annotation + std::string("pairwise_permutation_checker"));
     }
 
     ~FloatAddGadget() {
-         
+
     }
 
     void generate_r1cs_constraints() {
+        // connector
+        add_r1cs(a_1[0], 1, x_v);
+        add_r1cs(a_2[0], 1, x_s);
+        add_r1cs(a_1[1], 1, y_v);
+        add_r1cs(a_2[1], 1, y_s);
+        // pairwize permutation check
+        // after permutation, y_s >= x_s
+        pairwise_permutation_checker->generate_r1cs_constraints();
         // result_v belong to [2^(w-1), 2^w)
         result_v_decomposition->generate_r1cs_constraints();
         add_r1cs(result_v_decomposed[0], 1, 1); // most-significant bit is 1
         // delta = y_s - x_s
-        add_r1cs(delta, 1, y_s - x_s);
+        add_r1cs(delta, 1, b_2[1] - b_2[0]);
         // calculate delta - bound
         add_r1cs(delta - FieldT(__accuracy_bound) + FieldT((u64)pow(2, __max_delta_bit)) - e, 1, 0);
         // decompose e
@@ -469,11 +487,11 @@ public:
         // if most-significant bit is 0, smaller than bound. else bigger or equal.
         add_r1cs(e_decomposed[0], 1, f);
         // f * (x_v - result_v) = 0
-        add_r1cs(f, x_v - result_v, 0);
+        add_r1cs(f, b_1[0] - result_v, 0);
         // f * (x_s - result_s) = 0
-        add_r1cs(f, x_s - result_s, 0);
+        add_r1cs(f, b_2[0] - result_s, 0);
         // theta = y_s - result_s
-        add_r1cs(theta, 1, y_s - result_s);
+        add_r1cs(theta, 1, b_2[1] - result_s);
         // theta is delta / delta+1
         add_r1cs(theta - delta, theta - delta - 1, 0);
         // delta => delta'
@@ -485,7 +503,7 @@ public:
         // lambda = a * (theta - delta + 1)
         add_r1cs(a, theta_ - delta_ + 1, lambda);
         // b = x_v * a + y_v
-        add_r1cs(a, x_v, b - y_v);
+        add_r1cs(a, b_1[0], b - b_1[1]);
         // c = b - result_v * lambda
         add_r1cs(result_v, lambda, b - c);
         // d = sigma * c
@@ -495,16 +513,35 @@ public:
         add_r1cs(1 - f, lessthan_result, 0);
     }
 
-    void generate_r1cs_witness(Float &x, Float &y, Float& result) {
+    void generate_r1cs_witness(Float x, Float y, Float result) {
+        // connect
+        this->pb.val(a_1[0]) = x.value;
+        this->pb.val(a_2[0]) = x.scale;
+        this->pb.val(a_1[1]) = y.value;
+        this->pb.val(a_2[1]) = y.scale;
+        Float _x, _y;
+        // permutation check
+        if(x.real_value < y.real_value) {
+            _x = y;
+            _y = x;
+        } else {
+            _x = x;
+            _y = y; 
+        } 
+        this->pb.val(b_1[0]) = _x.value;
+        this->pb.val(b_2[0]) = _x.scale;
+        this->pb.val(b_1[1]) = _y.value;
+        this->pb.val(b_2[1]) = _y.scale;
+        pairwise_permutation_checker->generate_r1cs_witness();
         // result_v decomposed
         for (int i = 0; i < __omega; ++i) {
             this->pb.val(result_v_decomposed[i]) = (result.value >> (__omega - i - 1)) & 1U;
         }
         result_v_decomposition->generate_r1cs_witness();
         // delta
-        this->pb.val(delta) = y.scale - x.scale;
+        this->pb.val(delta) = _y.scale - _x.scale;
         // f
-        u64 e_value = y.scale - x.scale + (u64)pow(2, __max_delta_bit) - __accuracy_bound;
+        u64 e_value = _y.scale - _x.scale + (u64)pow(2, __max_delta_bit) - __accuracy_bound;
         this->pb.val(e) = e_value;
         for (int i = 0; i < __max_delta_bit + 1; ++i) {
             this->pb.val(e_decomposed[i]) = (e_value >> (__max_delta_bit - i)) & 1U;
@@ -512,7 +549,7 @@ public:
         e_decomposition->generate_r1cs_witness();
         this->pb.val(f) =  (e_value >> __max_delta_bit) & 1U;
         // theta
-        this->pb.val(theta) = y.scale - result.scale;
+        this->pb.val(theta) = _y.scale - result.scale;
 
         if((e_value >> __max_delta_bit) & 1U) {
             // bigger or equal
@@ -522,7 +559,7 @@ public:
             this->pb.val(a) = 1;
             this->pb.val(lambda) = 1;
             exponential_checker->generate_r1cs_witness(0);
-            u64 b_value = x.value + y.value;
+            u64 b_value = _x.value + _y.value;
             this->pb.val(b) = b_value;
             u64 c_value = b_value - result.value;
             this->pb.val(c) = c_value;
@@ -531,30 +568,30 @@ public:
 
             // less than
             lessthan_checker->generate_r1cs_witness(d_value, b_value);
-            this->pb.val(lessthan_result) = 0;
+            this->pb.val(lessthan_result) = d_value < b_value ? 0 : 1;
         } else {
             // smaller
-            this->pb.val(delta_) = y.scale - x.scale;
-            this->pb.val(theta_) = y.scale - result.scale;
+            this->pb.val(delta_) = _y.scale - _x.scale;
+            this->pb.val(theta_) = _y.scale - result.scale;
             // a
             mpz_t a_value, base;
             mpz_init(a_value);
             mpz_init_set_ui(base, __BASE);
-            mpz_pow_ui(a_value, base, y.scale - x.scale);
+            mpz_pow_ui(a_value, base, _y.scale - _x.scale);
             this->pb.val(a) = libff::bigint<__limbs>(a_value);
             // lambda
             mpz_t lambda_value, tmp; 
             mpz_init(lambda_value);
-            mpz_init_set_ui(tmp, x.scale - result.scale + 1);
+            mpz_init_set_ui(tmp, _x.scale - result.scale + 1);
             mpz_mul(lambda_value, a_value, tmp);
             this->pb.val(lambda) = libff::bigint<__limbs>(lambda_value);
-            exponential_checker->generate_r1cs_witness(y.scale - x.scale);
+            exponential_checker->generate_r1cs_witness(_y.scale - _x.scale);
             // b
             mpz_t b_value, tmp2;
             mpz_init(b_value);
             mpz_init(tmp2);
-            mpz_mul_ui(tmp2, a_value, x.value);
-            mpz_add_ui(b_value, tmp2, y.value);
+            mpz_mul_ui(tmp2, a_value, _x.value);
+            mpz_add_ui(b_value, tmp2, _y.value);
             this->pb.val(b) = libff::bigint<__limbs>(b_value);
             // c
             mpz_t c_value, tmp3;
@@ -569,7 +606,6 @@ public:
             mpz_mul_ui(d_value, c_value, sigma);
             this->pb.val(d) = libff::bigint<__limbs>(d_value);
 
-            std::cout << d_value << " " << b_value << std::endl;
             // less than
             lessthan_checker->generate_r1cs_witness(d_value, b_value);
             this->pb.val(lessthan_result) = 0;

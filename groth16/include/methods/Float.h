@@ -6,11 +6,14 @@
 #include <cmath>
 #include <vector>
 #include <map>
+#include <gmp.h>
 
 #define __float_constant_
 #define __BASE 2
 #define __MAXIMUM_BASE_POW 32 // MUST BE EVEN
 #define __MINIMUM_BASE_POW 256
+#define max_float(x, y) (x.real_value < y.real_value ? y : x) 
+#define min_float(x, y) (y.real_value < x.real_value ? y : x) 
 
 // #define __BASE 10
 // #define __MAXIMUM_BASE_POW 10 // MUST BE EVEN
@@ -122,9 +125,6 @@ public:
     Float operator+(const Float& other)
     {
         float real_value = this->real_value + other.real_value;
-        // if(abs(this->scale - other.scale) >32) {
-        //     std::cout << abs(this->scale - other.scale) << *this << other << std::endl;
-        // }
         // if scaling distance > (__MAXIMUM_BASE_POW / 2), omit smaller one
         if(this->scale >= other.scale + (__MAXIMUM_BASE_POW + 2)) {
             return Float(other.scale, other.value, real_value);
@@ -132,33 +132,34 @@ public:
             return Float(this->scale, this->value, real_value);
         }
 
-        // std::cout << this->scale << " " << other.scale << " ";
-
         i16 scale = max(this->scale, other.scale);
-        u64 this_value = this->value;
-        u64 other_value = other.value;
+        mpz_t this_value, other_value, value;
+        mpz_init(value);
+        mpz_init_set_ui(this_value, this->value);
+        mpz_init_set_ui(other_value, other.value);
 
         if (this->scale < scale) {
-            // std::cout << scale - this->scale;
-            this_value *= pow(__BASE, scale - this->scale);
+            mpz_t base, tmp;
+            mpz_init(tmp);
+            mpz_init_set_ui(base, __BASE);
+            mpz_pow_ui(tmp, base, scale - this->scale);
+            mpz_mul(this_value, this_value, tmp);
         } else {
-            // std::cout << scale - other.scale;
-            other_value *= pow(__BASE, scale - other.scale);
+            mpz_t base, tmp;
+            mpz_init(tmp);
+            mpz_init_set_ui(base, __BASE);
+            mpz_pow_ui(tmp, base, scale - other.scale);
+            mpz_mul(other_value, other_value, tmp);
         }
 
-        u64 value = this_value + other_value;
+        mpz_add(value, this_value, other_value);
         
-        int i = 0;
-        while (value > maximum_value) {
+        while (mpz_cmp_ui(value, maximum_value) > 0) {
             scale--;
-            value /= __BASE;
-            i++;
+            mpz_div_ui(value, value, __BASE);
         }
-        // std::cout << " " << i << " " << scale << std::endl;
 
-        // std::cout << "scale: " << abs(this->scale - other.scale) << " shift: " << i << std::endl;
-
-        return Float(scale, value, real_value);
+        return Float(scale, mpz_get_ui(value), real_value);
     }
 
     Float operator*(const Float& other)
@@ -174,13 +175,6 @@ public:
             i++;
         }
 
-        // std::cout << pow(2, 32) * (this->value * other.value - (u64)(value * pow(2, i)));
-        // std::cout << " ";
-        // std::cout << this->value * other.value;
-        // std::cout << " compare: " << (pow(2, 32) * (this->value * other.value - (u64)(value * pow(2, i))) < (this->value * other.value ));
-        // std::cout << std::endl;
-        // std::cout << i << " " << *this << " * " << other << std::endl;
-
         return Float(scale, value, real_value);
     }
 
@@ -188,19 +182,12 @@ public:
     {
         float real_value = this->real_value / other.real_value;
         i16 scale = this->scale + __MAXIMUM_BASE_POW - other.scale;
-        // if(scale < 0) {
-        //     std::cout << "111: " << *this << other << std::endl;
-        // }
         u64 value = this->value * maximum_value / other.value;
 
-        // int i = 0;
         while(value > maximum_value) {
             scale--;
             value /= __BASE;
-            // i++;
         }
-
-        // std::cout << i << std::endl;
 
         return Float(scale, value, real_value);
     }

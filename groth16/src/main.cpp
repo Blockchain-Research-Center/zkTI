@@ -235,16 +235,16 @@ void algo_ZC(std::vector<std::vector<unsigned>> &answer_data, std::vector<unsign
     std::cerr << "Constraints number: " << pb.num_constraints() << std::endl;
     std::cerr << "Public input number: " << pb.num_inputs() << std::endl;
     std::cerr << "Witness number: " << pb.auxiliary_input().size() << std::endl;
-    std::cerr << "Variable number: " << pb.num_variables() << std::endl;
+    std::cerr << "Varia ble number: " << pb.num_variables() << std::endl;
     std::cerr << "Protoboard satisfied: " << pb.is_satisfied() << std::endl;
 
-    // // export .zkif file
-    // std::cerr << "Start exporting circuit into .zkif file: "<< std::endl;
-    // zkifExporter<FieldT> exporter = zkifExporter<FieldT>(circuit_name, pb);
-    // exporter.export_protoboard();
+    // export .zkif file
+    std::cerr << "Start exporting circuit into .zkif file: "<< std::endl;
+    zkifExporter<FieldT> exporter = zkifExporter<FieldT>(circuit_name, pb);
+    exporter.export_protoboard();
 
-    // // Groth16 zk-SNARK
-    // run_r1cs_gg_ppzksnark<ppT>(pb, circuit_name + "_proof");
+    // Groth16 zk-SNARK
+    run_r1cs_gg_ppzksnark<ppT>(pb, circuit_name + "_proof");
 }
 
 int main(int argc, char **argv)
