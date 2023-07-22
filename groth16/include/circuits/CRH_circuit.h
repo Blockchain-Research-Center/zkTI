@@ -1,11 +1,11 @@
-#ifndef __zkTI_zencrowd_circuit_h
-#define __zkTI_zencrowd_circuit_h
+#ifndef __zkTI_crh_circuit_h
+#define __zkTI_crh_circuit_h
 
 #include <libff/common/default_types/ec_pp.hpp>
 #include <libsnark/zk_proof_systems/ppzksnark/r1cs_gg_ppzksnark/r1cs_gg_ppzksnark.hpp>
 
 #include "../methods/Float.h"
-#include "../methods/ZenCrowd.h"
+#include "../methods/CRH.h"
 #include "./gadgets.h"
 #include "./gadgets2.h"
 #include "../common.h"
@@ -17,11 +17,11 @@ using namespace libsnark;
 #endif
 
 template <typename FieldT>
-class ZenCrowdCircuit : public gadget<FieldT>
+class CRHCircuit : public gadget<FieldT>
 {
 
 public:
-    ZenCrowd &zc;
+    CRH &crh;
     std::vector<unsigned> &predicted_data;
     int task_number, worker_number, label_number;
     int label_class_number;
@@ -40,25 +40,20 @@ private:
     std::vector<std::vector<std::vector<std::vector<pb_variable<FieldT>>>>> task_label_prediction;
     std::vector<std::vector<std::vector<pb_variable<FieldT>>>> updated_task_label_prediction;
     std::vector<std::vector<std::vector<pb_variable<FieldT>>>> updated_worker_quality;
-    std::vector<std::vector<std::vector<std::vector<std::vector<pb_variable<FieldT>>>>>> multiply_result_variables;
+    std::vector<std::vector<std::vector<std::vector<pb_variable<FieldT>>>>> add_result_variables;
     std::vector<std::vector<std::vector<std::vector<pb_variable<FieldT>>>>> worker_chosen_label_prediction;
     std::vector<std::vector<std::vector<pb_variable<FieldT>>>> equality_result_variables;
-    std::vector<std::vector<std::vector<pb_variable<FieldT>>>> multiply_result_variables_2;
 
     // (auxiliary input) auxiliary witness and gadgets
     std::vector<std::vector<std::vector<pb_variable<FieldT>>>> sum;
     // label equality gadgets
     std::vector<std::vector<std::vector<EqualityCheckGadget<FieldT>*>>> equality_check_gadgets; // task * worker * label
-    // multiplication gates
-    std::vector<std::vector<std::vector<std::vector<FloatMultiplyGadget<FieldT>*>>>> multiply_gates_1;
-    // add gates
-    std::vector<std::vector<FloatAddGadget<FieldT>*>> add_gates_1;
+    // add gates 1
+    std::vector<std::vector<std::vector<FloatAddGadget<FieldT>*>>> add_gates_1;
+    // add gates 2
+    std::vector<std::vector<FloatAddGadget<FieldT>*>> add_gates_2;
     // divide gates
     std::vector<std::vector<FloatDivideGadget<FieldT>*>> divide_gates;
-    // add gates
-    std::vector<std::vector<FloatAddGadget<FieldT>*>> add_gates_2;
-    // multiplication gates
-    std::vector<std::vector<FloatMultiplyGadget<FieldT>*>> multiply_gates_2;
 
     // helper function
     // initialize all the variables pb needed
@@ -85,8 +80,8 @@ private:
         init_three_dimension_vec(this->pb, sum, task_number, label_class_number + 1, 2, std::string("sum"));
         // equality check result
         init_three_dimension_vec(this->pb, equality_result_variables, task_number, worker_number, label_class_number, std::string("equality_result"));
-        // multiplication result
-        init_five_dimension_vec(this->pb, multiply_result_variables, task_number, label_class_number, worker_number, 2, 2, std::string("multiply_result_variables"));
+        // add result
+        init_four_dimension_vec(this->pb, add_result_variables, task_number, label_class_number, worker_number + 1, 2, "add_result_variables");
         // worker choosed label prediction
         init_four_dimension_vec(this->pb, worker_chosen_label_prediction, worker_number, task_number, label_class_number + 1, 2, "worker_chosen_label_prediction");
         // multiplication result 2
@@ -147,15 +142,15 @@ private:
     }
 
 public:
-    ZenCrowdCircuit(protoboard<FieldT> &pb, ZenCrowd &_zc, std::vector<unsigned> &_predicted_data, const std::string &annotation = "") : gadget<FieldT>(pb, annotation), zc(_zc), predicted_data(_predicted_data)
+    CRHCircuit(protoboard<FieldT> &pb, CRH &_crh, std::vector<unsigned> &_predicted_data, const std::string &annotation = "") : gadget<FieldT>(pb, annotation), crh(_crh), predicted_data(_predicted_data)
     {
-        task_number = zc.answer_data.size();
+        task_number = crh.answer_data.size();
         // task_number = 10;
-        worker_number = zc.answer_data[0].size();
+        worker_number = crh.answer_data[0].size();
         // worker_number = 2;
         label_number = task_number * worker_number;
-        label_class_number = zc.label_class_number;
-        init_quality = zc.init_quality.real_value;
+        label_class_number = crh.label_class_number;
+        init_quality = crh.init_quality.real_value;
 
         // initialize variables
         init_pb_vars();
@@ -203,7 +198,7 @@ public:
             multiply_gates_1.push_back(row_x);
         }
 
-        // initialize add gadgets 1
+        // initialize add gadgets 2
         for (int i = 0; i < task_number; ++i)
         {
             std::vector<FloatAddGadget<FieldT>*> row_x;
@@ -213,7 +208,7 @@ public:
                 // we leave the implementation of permutation check inside gadget
                 row_x.push_back(new FloatAddGadget<FieldT>(this->pb, sum[i][k][0], sum[i][k][1], task_label_prediction[i][k][worker_number][0], task_label_prediction[i][k][worker_number][1], sum[i][k+1][0], sum[i][k+1][1], multiplies, random_point, random_coefficients, gadget_name));      
             }
-            add_gates_1.push_back(row_x);
+            add_gates_2.push_back(row_x);
         }
 
         // initialize divide gadgets
@@ -254,7 +249,7 @@ public:
         }
     }
 
-    ~ZenCrowdCircuit() {}
+    ~CRHCircuit() {}
 
     void generate_r1cs_constraints()
     {
@@ -271,21 +266,21 @@ public:
             }
 
             for(int k = 0; k < label_class_number; k++) {
-                add_gates_1[i][k]->generate_r1cs_constraints();
+                add_gates_2[i][k]->generate_r1cs_constraints();
                 divide_gates[i][k]->generate_r1cs_constraints();
             }
         }
 
         for(int j = 0; j < worker_number; j++) {
             for(int i = 0; i < task_number; i++) {
-                for(int k = 0; k < label_class_number; k++) {
-                    // label = answer_data[i][j]
-                    // task_label_prediction[i][label]
-                    add_r1cs(updated_task_label_prediction[i][k][0], equality_result_variables[i][j][k], worker_chosen_label_prediction[j][i][k+1][0] - worker_chosen_label_prediction[j][i][k][0]);
-                    add_r1cs(updated_task_label_prediction[i][k][1], equality_result_variables[i][j][k], worker_chosen_label_prediction[j][i][k+1][1] - worker_chosen_label_prediction[j][i][k][1]);
-                }
-                multiply_gates_2[j][i]->generate_r1cs_constraints();
-                add_gates_2[j][i]->generate_r1cs_constraints();
+                // for(int k = 0; k < label_class_number; k++) {
+                //     // label = answer_data[i][j]
+                //     // task_label_prediction[i][label]
+                //     add_r1cs(updated_task_label_prediction[i][k][0], equality_result_variables[i][j][k], worker_chosen_label_prediction[j][i][k+1][0] - worker_chosen_label_prediction[j][i][k][0]);
+                //     add_r1cs(updated_task_label_prediction[i][k][1], equality_result_variables[i][j][k], worker_chosen_label_prediction[j][i][k+1][1] - worker_chosen_label_prediction[j][i][k][1]);
+                // }
+                // multiply_gates_2[j][i]->generate_r1cs_constraints();
+                // add_gates_2[j][i]->generate_r1cs_constraints();
             }
         }
     }
@@ -297,11 +292,11 @@ public:
         {
             for (int j = 0; j < worker_number; j++)
             {
-                this->pb.val(answer_variables[i][j]) = zc.answer_data[i][j];
+                this->pb.val(answer_variables[i][j]) = crh.answer_data[i][j];
             }
         }
 
-        // ZC
+        // CRH
         std::vector<Float> worker_quality_value = std::vector<Float>(worker_number);
         for(int j = 0; j < worker_number; j++) {
             worker_quality_value[j] = Float(init_quality);
@@ -314,7 +309,7 @@ public:
             }
 
             for(int j = 0; j < worker_number; j++) {
-                unsigned label = zc.answer_data[i][j];
+                unsigned label = crh.answer_data[i][j];
                 for(int k = 0; k < label_class_number; k++) {
                     Float a = worker_quality_value[j];
                     Float b = a.one_minus();
@@ -335,8 +330,8 @@ public:
                         task_label_prediction_value[i][k] = multi_value_1;
                     }
 
-                    this->pb.val(equality_result_variables[i][j][k]) = (zc.answer_data[i][j] == k);
-                    equality_check_gadgets[i][j][k]->generate_r1cs_witness(zc.answer_data[i][j], k);
+                    this->pb.val(equality_result_variables[i][j][k]) = (crh.answer_data[i][j] == k);
+                    equality_check_gadgets[i][j][k]->generate_r1cs_witness(crh.answer_data[i][j], k);
 
                     this->pb.val(task_label_prediction[i][k][j+1][0]) = task_label_prediction_value[i][k].value;
                     this->pb.val(task_label_prediction[i][k][j+1][1]) = task_label_prediction_value[i][k].scale;
@@ -350,7 +345,7 @@ public:
                 Float added_value = sums_value + task_label_prediction_value[i][k];
                 this->pb.val(sum[i][k+1][0]) = added_value.value;
                 this->pb.val(sum[i][k+1][1]) = added_value.scale;
-                add_gates_1[i][k]->generate_r1cs_witness(sums_value, task_label_prediction_value[i][k], added_value);                      
+                add_gates_2[i][k]->generate_r1cs_witness(sums_value, task_label_prediction_value[i][k], added_value);                      
                 sums_value = added_value;
             }
 
@@ -368,7 +363,7 @@ public:
             this->pb.val(updated_worker_quality[j][0][0]) = worker_quality_value[j].value;
             this->pb.val(updated_worker_quality[j][0][1]) = worker_quality_value[j].scale;
             for(int i = 0; i < task_number; i++) {
-                unsigned label = zc.answer_data[i][j];
+                unsigned label = crh.answer_data[i][j];
                 this->pb.val(worker_chosen_label_prediction[j][i][0][0]) = 0;
                 this->pb.val(worker_chosen_label_prediction[j][i][0][1]) = 0;
                 for(int k = 0; k < label_class_number; k++) {

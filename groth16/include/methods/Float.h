@@ -10,14 +10,11 @@
 
 #define __float_constant_
 #define __BASE 2
-#define __MAXIMUM_BASE_POW 32 // MUST BE EVEN
+// #define __MAXIMUM_BIT 32
+#define __MAXIMUM_BIT 23
 #define __MINIMUM_BASE_POW 256
 #define max_float(x, y) (x.real_value < y.real_value ? y : x) 
 #define min_float(x, y) (y.real_value < x.real_value ? y : x) 
-
-// #define __BASE 10
-// #define __MAXIMUM_BASE_POW 10 // MUST BE EVEN
-// #define __MINIMUM_BASE_POW 20
 
 using namespace std;
 
@@ -37,7 +34,7 @@ public:
     float real_value; // a = BASE^{-E} * (S - Z)
 
     static Float one() {
-        return Float(__MAXIMUM_BASE_POW, get_maximum_value(), 1.0);
+        return Float(__MAXIMUM_BIT, get_maximum_value(), 1.0);
     }
 
     static Float zero() {
@@ -45,7 +42,7 @@ public:
     }
 
     static u64 get_maximum_value() {
-        return (u64)pow(__BASE, __MAXIMUM_BASE_POW) - 1;
+        return (u64)pow(__BASE, __MAXIMUM_BIT) - 1;
     }
 
     static float get_minimum_value() {
@@ -76,7 +73,7 @@ public:
             this->scale++;
         }
 
-        if(scale >= __MAXIMUM_BASE_POW) {
+        if(scale >= __MAXIMUM_BIT) {
             // 0
             this->value = 0;
             this->scale = __MINIMUM_BASE_POW;
@@ -84,7 +81,7 @@ public:
         }
 
         // Start with the largest possible scale
-        this->scale += __MAXIMUM_BASE_POW;
+        this->scale += __MAXIMUM_BIT;
         this->value = (u64)(x * maximum_value);
 
         // If value is too large, decrease scale
@@ -99,7 +96,7 @@ public:
     }
 
     Float one_minus() {
-        u64 value = ((get_maximum_value()) * (u64)pow(__BASE, this->scale - __MAXIMUM_BASE_POW)) - this->value;
+        u64 value = ((get_maximum_value()) * (u64)pow(__BASE, this->scale - __MAXIMUM_BIT)) - this->value;
         i16 scale = this->scale;
 
         while (value < maximum_value) {
@@ -125,10 +122,10 @@ public:
     Float operator+(const Float& other)
     {
         float real_value = this->real_value + other.real_value;
-        // if scaling distance > (__MAXIMUM_BASE_POW / 2), omit smaller one
-        if(this->scale >= other.scale + (__MAXIMUM_BASE_POW + 2)) {
+        // if scaling distance > (__MAXIMUM_BIT / 2), omit smaller one
+        if(this->scale >= other.scale + (__MAXIMUM_BIT + 2)) {
             return Float(other.scale, other.value, real_value);
-        } else if(other.scale >= this->scale + (__MAXIMUM_BASE_POW + 2)){
+        } else if(other.scale >= this->scale + (__MAXIMUM_BIT + 2)){
             return Float(this->scale, this->value, real_value);
         }
 
@@ -181,7 +178,7 @@ public:
     Float operator/(const Float& other)
     {
         float real_value = this->real_value / other.real_value;
-        i16 scale = this->scale + __MAXIMUM_BASE_POW - other.scale;
+        i16 scale = this->scale + __MAXIMUM_BIT - other.scale;
         u64 value = this->value * maximum_value / other.value;
 
         while(value > maximum_value) {

@@ -1,12 +1,12 @@
-# Crowdsoucing TI Methods
+# Crowdsourcing TI Methods
 
-These codes and datasets are implementation of truth inference (TI) methods mentioned from the survey: [Truth inference in crowdsourcing: is the problem solved?](https://doi.org/10.14778/3055540.3055547). They are Python codes, and the datasets applied ire in the `../datasets` folder.
+These codes and datasets are implementation of truth inference (TI) methods mentioned in the survey: [Truth inference in crowdsourcing: is the problem solved?](https://doi.org/10.14778/3055540.3055547). They are Python codes, and the datasets applied are in the `../datasets` folder.
 
 Parts of the codes are borrowed from the open sourcing library: [crowd_truth_infer](https://github.com/zhydhkcws/crowd_truth_infer)
 
 ## Annotation
 
-These annotations follows the base work. See the open source algorithm library for more details.
+These annotations followes the base work. See the open source algorithm library above for more details.
 
 - w: workers
 - l: labels

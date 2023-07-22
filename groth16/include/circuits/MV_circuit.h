@@ -52,24 +52,24 @@ private:
         
         // public inputs
         // predicted variables;
-        init_one_dimension_vec(predicted_class_variables, task_number, std::string("predicted"));
+        init_one_dimension_vec(this->pb, predicted_class_variables, task_number, std::string("predicted"));
         // label class variables
-        init_one_dimension_vec(label_class_variables, label_class_number, std::string("label_class"));
+        init_one_dimension_vec(this->pb, label_class_variables, label_class_number, std::string("label_class"));
         // correct
-        init_one_dimension_vec(correct, task_number, std::string("correct"));
+        init_one_dimension_vec(this->pb, correct, task_number, std::string("correct"));
 
         // answer variables
-        init_two_dimension_vec(answer_variables, task_number, worker_number, std::string("answer_variables"));
+        init_two_dimension_vec(this->pb, answer_variables, task_number, worker_number, std::string("answer_variables"));
         // equality results variables
-        init_three_dimension_vec(equality_results_variables, task_number, worker_number, label_class_number, std::string("equality_result"));
+        init_three_dimension_vec(this->pb, equality_results_variables, task_number, worker_number, label_class_number, std::string("equality_result"));
         // label class counts variables
-        init_three_dimension_vec(label_class_counts_variables, task_number, worker_number + 1, label_class_number, std::string("label_class_count"));
+        init_three_dimension_vec(this->pb, label_class_counts_variables, task_number, worker_number + 1, label_class_number, std::string("label_class_count"));
         // comparison result variables
-        init_two_dimension_vec(comparison_result_variables, task_number, label_class_number, std::string("comprison_result"));
+        init_two_dimension_vec(this->pb, comparison_result_variables, task_number, label_class_number, std::string("comprison_result"));
         // comparison diff variables
-        init_two_dimension_vec(comparison_diff_variables, task_number, label_class_number, std::string("comprison_diff"));
-        init_two_dimension_vec(predicted_value_counts_variables, task_number, worker_number + 1, std::string("predicted_value_counts"));
-        init_two_dimension_vec(predicted_value_equality_result_variables, task_number, worker_number, std::string("predicted_value_equality_result"));
+        init_two_dimension_vec(this->pb, comparison_diff_variables, task_number, label_class_number, std::string("comprison_diff"));
+        init_two_dimension_vec(this->pb, predicted_value_counts_variables, task_number, worker_number + 1, std::string("predicted_value_counts"));
+        init_two_dimension_vec(this->pb, predicted_value_equality_result_variables, task_number, worker_number, std::string("predicted_value_equality_result"));
 
         // set public number
         this->pb.set_input_sizes(task_number + label_class_number + task_number);
@@ -93,47 +93,6 @@ private:
         for (int i = 0; i < task_number; i++)
         {
             this->pb.val(correct[i]) = 1;
-        }
-    }
-
-    void init_one_dimension_vec(std::vector<pb_variable<FieldT>> &pb_vec, int x_n, const std::string& prefix_name) {
-        for (int i = 0; i < x_n; i++)
-        {
-            pb_variable<FieldT> var;
-            var.allocate(this->pb, prefix_name + "_" + std::to_string(i));
-            pb_vec.push_back(var);
-        }
-    }
-
-    void init_two_dimension_vec(std::vector<std::vector<pb_variable<FieldT>>> &pb_vec, int x_n, int y_n, const std::string& prefix_name) {
-        for (int i = 0; i < x_n; i++) {
-            std::vector<pb_variable<FieldT>> row_x;
-            for (int j = 0; j < y_n; j++)
-            {
-                pb_variable<FieldT> var;
-                var.allocate(this->pb, prefix_name + "_" + std::to_string(i) + "_" + std::to_string(j));
-                row_x.push_back(var);
-            }
-            pb_vec.push_back(row_x);
-        }
-    }
-
-    void init_three_dimension_vec(std::vector<std::vector<std::vector<pb_variable<FieldT>>>> &pb_vec, int x_n, int y_n, int z_n, const std::string& prefix_name) {
-        for (int i = 0; i < x_n; ++i)
-        {
-            std::vector<std::vector<pb_variable<FieldT>>> row_x;
-            for (int j = 0; j < y_n; ++j)
-            {
-                std::vector<pb_variable<FieldT>> row_y;
-                for (int k = 0; k < z_n; ++k)
-                {
-                    pb_variable<FieldT> var;
-                    var.allocate(this->pb, prefix_name + "_" + std::to_string(i) + "_" + std::to_string(j) + "_" + std::to_string(k));
-                    row_y.push_back(var);
-                }
-                row_x.push_back(row_y);
-            }
-            pb_vec.push_back(row_x);
         }
     }
 

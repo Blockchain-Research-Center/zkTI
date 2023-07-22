@@ -9,15 +9,16 @@
 
 #ifndef __float_constant_
 #define __BASE 2
-#define __MAXIMUM_BASE_POW 32
+#define __MAXIMUM_BIT 23
 #define __MINIMUM_BASE_POW 256
 #endif
 
 #define __scale_n_bit 6
-#define __accuracy 31
+#define __accuracy (__MAXIMUM_BIT - 1)
 #define __accuracy_bound (__accuracy + 2)
 #define __max_delta_bit 8
-#define __omega __MAXIMUM_BASE_POW // omega is the bit-n of each number
+// #define __max_delta_bit 7
+#define __omega __MAXIMUM_BIT // omega is the bit-n of each number
 
 // This gadget is used when x, y is not constrainted.
 // and we compare x, y in the field directly.
@@ -241,7 +242,7 @@ public:
         add_r1cs(result_s + theta, 1, x_s + y_s);
         // theta is w or w-1
         add_r1cs(theta - __omega + 1, theta - __omega, 0);
-        // lambda = (theta - w - 1) * BASE ** theta + (theta - w) * BASE ** (theta - 1) 
+        // lambda = (theta - w + 1) * BASE ** theta - (theta - w) * BASE ** (theta - 1) 
         add_r1cs(lambda, 1, exp_base_omega_sub_1 * (theta - __omega + 2));
         // a = x_v * y_v
         add_r1cs(x_v, y_v, a);
@@ -281,6 +282,7 @@ public:
         u64 c_value = (u64)(sigma) *  b_value;
         this->pb.val(c) = libff::bigint<__limbs>(c_value);
         // less than
+        // std::cout << c_value << " " << a_value << " " << a_value - c_value << std::endl;
         lessthan_checker->generate_r1cs_witness(c_value, a_value);
         this->pb.val(lessthan_result) = 0;
     }

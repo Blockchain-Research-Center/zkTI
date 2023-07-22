@@ -7,8 +7,10 @@
 
 #include "methods/MV.h"
 #include "methods/ZenCrowd.h"
+#include "methods/CRH.h"
 #include "circuits/MV_circuit.h"
 #include "circuits/ZenCrowd_circuit.h"
+#include "circuits/CRH_circuit.h"
 #include "common.h"
 #include "zk_proof_system/groth16.h"
 #include "libsnark_exporter.h"
@@ -235,7 +237,7 @@ void algo_ZC(std::vector<std::vector<unsigned>> &answer_data, std::vector<unsign
     std::cerr << "Constraints number: " << pb.num_constraints() << std::endl;
     std::cerr << "Public input number: " << pb.num_inputs() << std::endl;
     std::cerr << "Witness number: " << pb.auxiliary_input().size() << std::endl;
-    std::cerr << "Varia ble number: " << pb.num_variables() << std::endl;
+    std::cerr << "Variable number: " << pb.num_variables() << std::endl;
     std::cerr << "Protoboard satisfied: " << pb.is_satisfied() << std::endl;
 
     // export .zkif file
@@ -246,6 +248,43 @@ void algo_ZC(std::vector<std::vector<unsigned>> &answer_data, std::vector<unsign
     // Groth16 zk-SNARK
     run_r1cs_gg_ppzksnark<ppT>(pb, circuit_name + "_proof");
 }
+
+template <typename ppT>
+void algo_CRH(std::vector<std::vector<unsigned>> &answer_data, std::vector<unsigned> &truth_data)
+{
+    typedef libff::Fr<ppT> FieldT;
+    default_r1cs_gg_ppzksnark_pp::init_public_params();
+
+    std::cerr << "Task number: " << answer_data.size() << std::endl;
+    std::cerr << "Worker number: " << answer_data[0].size() << std::endl;
+    std::cerr << "Label number: " << answer_data.size() * answer_data[0].size() << std::endl;
+
+    CRH crh = CRH(answer_data, truth_data);
+    string circuit_name = "CRH";
+    std::cerr << "Run the Truth Inference algorithm: " << std::endl;
+    std::vector<unsigned> result = crh.run();
+    std::cerr << "Accuracy: " << crh.get_accuracy(result) << std::endl;
+
+    protoboard<FieldT> pb;
+    CRHCircuit<FieldT> crhCircuit = CRHCircuit<FieldT>(pb, crh, result, circuit_name);
+    crhCircuit.generate_r1cs_constraints();
+    crhCircuit.generate_r1cs_witness();
+
+    std::cerr << "Constraints number: " << pb.num_constraints() << std::endl;
+    std::cerr << "Public input number: " << pb.num_inputs() << std::endl;
+    std::cerr << "Witness number: " << pb.auxiliary_input().size() << std::endl;
+    std::cerr << "Variable number: " << pb.num_variables() << std::endl;
+    std::cerr << "Protoboard satisfied: " << pb.is_satisfied() << std::endl;
+
+    // export .zkif file
+    std::cerr << "Start exporting circuit into .zkif file: "<< std::endl;
+    zkifExporter<FieldT> exporter = zkifExporter<FieldT>(circuit_name, pb);
+    exporter.export_protoboard();
+
+    // Groth16 zk-SNARK
+    run_r1cs_gg_ppzksnark<ppT>(pb, circuit_name + "_proof");
+}
+
 
 int main(int argc, char **argv)
 {
@@ -261,7 +300,11 @@ int main(int argc, char **argv)
     // algo_MV<default_r1cs_gg_ppzksnark_pp>(answer_data, truth_data);
     // std::cerr << "Finish." << std::endl;
 
-    std::cerr << "Run Groth16 zk-SNARK for zkTI ZC algorithm: " << std::endl;
-    algo_ZC<default_r1cs_gg_ppzksnark_pp>(answer_data, truth_data);
+    // std::cerr << "Run Groth16 zk-SNARK for zkTI ZC algorithm: " << std::endl;
+    // algo_ZC<default_r1cs_gg_ppzksnark_pp>(answer_data, truth_data);
+    // std::cerr << "Finish." << std::endl;
+
+    std::cerr << "Run Groth16 zk-SNARK for zkTI CRH algorithm: " << std::endl;
+    algo_CRH<default_r1cs_gg_ppzksnark_pp>(answer_data, truth_data);
     std::cerr << "Finish." << std::endl;
 }
