@@ -2,6 +2,6 @@
 	path = groth16/depends/libsnark
 	url = https://github.com/scipr-lab/libsnark.git
 
-[submodule "Spartan-importer"]
+[submodule "spartan"]
 	path = spartan
 	url = https://github.com/LBruyne/Spartan-zkinterface-importer.git

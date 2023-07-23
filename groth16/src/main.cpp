@@ -26,6 +26,8 @@
 
 using namespace libsnark;
 
+int task_number, worker_number;
+
 std::vector<std::vector<unsigned>> read_answer_data(const std::vector<std::vector<std::string>> &raw_answer_data)
 {
     std::vector<std::vector<unsigned>> answer_data; // The transposed data to store the result
@@ -194,7 +196,7 @@ void algo_MV(std::vector<std::vector<unsigned>> &answer_data, std::vector<unsign
     std::cerr << "Accuracy: " << mv.get_accuracy(result) << std::endl;
 
     protoboard<FieldT> pb;
-    MajorityVoteCircuit<FieldT> majorityVoteCircuit = MajorityVoteCircuit<FieldT>(pb, mv, result, circuit_name);
+    MajorityVoteCircuit<FieldT> majorityVoteCircuit = MajorityVoteCircuit<FieldT>(pb, mv, result, task_number, worker_number, circuit_name);
     majorityVoteCircuit.generate_r1cs_constraints();
     majorityVoteCircuit.generate_r1cs_witness();
 
@@ -206,7 +208,7 @@ void algo_MV(std::vector<std::vector<unsigned>> &answer_data, std::vector<unsign
 
     // export .zkif file
     std::cerr << "Start exporting circuit into .zkif file: "<< std::endl;
-    zkifExporter<FieldT> exporter = zkifExporter<FieldT>(circuit_name, pb);
+    zkifExporter<FieldT> exporter = zkifExporter<FieldT>(circuit_name + "_" + std::to_string(task_number) + "_" + std::to_string(worker_number), pb);
     exporter.export_protoboard();
 
     // Groth16 zk-SNARK
@@ -230,7 +232,7 @@ void algo_ZC(std::vector<std::vector<unsigned>> &answer_data, std::vector<unsign
     std::cerr << "Accuracy: " << zc.get_accuracy(result) << std::endl;
 
     protoboard<FieldT> pb;
-    ZenCrowdCircuit<FieldT> zcCircuit = ZenCrowdCircuit<FieldT>(pb, zc, result, circuit_name);
+    ZenCrowdCircuit<FieldT> zcCircuit = ZenCrowdCircuit<FieldT>(pb, zc, result, task_number, worker_number, circuit_name);
     zcCircuit.generate_r1cs_constraints();
     zcCircuit.generate_r1cs_witness();
 
@@ -242,7 +244,7 @@ void algo_ZC(std::vector<std::vector<unsigned>> &answer_data, std::vector<unsign
 
     // export .zkif file
     std::cerr << "Start exporting circuit into .zkif file: "<< std::endl;
-    zkifExporter<FieldT> exporter = zkifExporter<FieldT>(circuit_name, pb);
+    zkifExporter<FieldT> exporter = zkifExporter<FieldT>(circuit_name + "_" + std::to_string(task_number) + "_" + std::to_string(worker_number), pb);
     exporter.export_protoboard();
 
     // Groth16 zk-SNARK
@@ -266,7 +268,7 @@ void algo_CRH(std::vector<std::vector<unsigned>> &answer_data, std::vector<unsig
     std::cerr << "Accuracy: " << crh.get_accuracy(result) << std::endl;
 
     protoboard<FieldT> pb;
-    CRHCircuit<FieldT> crhCircuit = CRHCircuit<FieldT>(pb, crh, result, circuit_name);
+    CRHCircuit<FieldT> crhCircuit = CRHCircuit<FieldT>(pb, crh, result, task_number, worker_number, circuit_name);
     crhCircuit.generate_r1cs_constraints();
     crhCircuit.generate_r1cs_witness();
 
@@ -278,13 +280,12 @@ void algo_CRH(std::vector<std::vector<unsigned>> &answer_data, std::vector<unsig
 
     // export .zkif file
     std::cerr << "Start exporting circuit into .zkif file: "<< std::endl;
-    zkifExporter<FieldT> exporter = zkifExporter<FieldT>(circuit_name, pb);
+    zkifExporter<FieldT> exporter = zkifExporter<FieldT>(circuit_name + "_" + std::to_string(task_number) + "_" + std::to_string(worker_number), pb);
     exporter.export_protoboard();
 
     // Groth16 zk-SNARK
     run_r1cs_gg_ppzksnark<ppT>(pb, circuit_name + "_proof");
 }
-
 
 int main(int argc, char **argv)
 {
@@ -296,15 +297,24 @@ int main(int argc, char **argv)
     std::vector<std::vector<unsigned>> answer_data = read_answer_data(raw_answer_data);
     std::vector<unsigned> truth_data = read_truth_data(raw_answer_data, raw_truth_data);
 
-    // std::cerr << "Run Groth16 zk-SNARK for zkTI MV algorithm: " << std::endl;
-    // algo_MV<default_r1cs_gg_ppzksnark_pp>(answer_data, truth_data);
-    // std::cerr << "Finish." << std::endl;
+    task_number = std::stoi(std::string(argv[3]));
+    worker_number = std::stoi(std::string(argv[4]));
 
-    // std::cerr << "Run Groth16 zk-SNARK for zkTI ZC algorithm: " << std::endl;
-    // algo_ZC<default_r1cs_gg_ppzksnark_pp>(answer_data, truth_data);
-    // std::cerr << "Finish." << std::endl;
+    std::cerr << "Start testing:" << std::endl;
+    std::cerr << "Test task number: " << task_number << std::endl;
+    std::cerr << "Test worker number: " << worker_number << std::endl;
+
+    std::cerr << "Run Groth16 zk-SNARK for zkTI MV algorithm: " << std::endl;
+    algo_MV<default_r1cs_gg_ppzksnark_pp>(answer_data, truth_data);
+    std::cerr << "Finish." << std::endl;
+
+    std::cerr << "Run Groth16 zk-SNARK for zkTI ZC algorithm: " << std::endl;
+    algo_ZC<default_r1cs_gg_ppzksnark_pp>(answer_data, truth_data);
+    std::cerr << "Finish." << std::endl;
 
     std::cerr << "Run Groth16 zk-SNARK for zkTI CRH algorithm: " << std::endl;
     algo_CRH<default_r1cs_gg_ppzksnark_pp>(answer_data, truth_data);
     std::cerr << "Finish." << std::endl;
+
+    std::cerr << "Test finish." << std::endl;
 }

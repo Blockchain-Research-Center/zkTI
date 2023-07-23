@@ -1,6 +1,6 @@
 # ZKTI
 
-Zero knowledge proof for truth inference (TI) algorithms.
+Zero-knowledge proofs (ZK) for truth inference (TI) algorithms.
 
 ## Clone
 

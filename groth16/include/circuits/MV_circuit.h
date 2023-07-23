@@ -97,10 +97,12 @@ private:
     }
 
 public:
-    MajorityVoteCircuit(protoboard<FieldT> &pb, MV &_mv, std::vector<unsigned> &_predicted_data, const std::string &annotation = "") : gadget<FieldT>(pb, annotation), mv(_mv), predicted_data(_predicted_data)
+    MajorityVoteCircuit(protoboard<FieldT> &pb, MV &_mv, std::vector<unsigned> &_predicted_data, int _task_number, int _worker_number, const std::string &annotation = "") : gadget<FieldT>(pb, annotation), mv(_mv), predicted_data(_predicted_data)
     {
-        task_number = mv.answer_data.size();
-        worker_number = mv.answer_data[0].size();
+        assert(_task_number <= crh.answer_data.size());
+        assert(_worker_number <= crh.answer_data[0].size());
+        task_number = _task_number;
+        worker_number = _worker_number;
         label_number = task_number * worker_number;
         label_class_number = mv.label_class_number;
 

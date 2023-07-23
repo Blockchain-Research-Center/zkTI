@@ -7,7 +7,7 @@
 #include <vector>
 #include <set>
 
-#include "./methods/Float.h"
+#include "./Float.h"
 #include "../common.h"
 #include "./TruthInference.h"
 
