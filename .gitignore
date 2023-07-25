@@ -6,3 +6,7 @@ groth16/depends/libsnark
 libsnark
 
 test.py
+
+*/*.zkif
+*/*_proof
+*/nohup.out

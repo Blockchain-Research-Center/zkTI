@@ -6,7 +6,7 @@ Parts of the codes are borrowed from the open sourcing library: [crowd_truth_inf
 
 ## Annotation
 
-These annotations followes the base work. See the open source algorithm library above for more details.
+These annotations follow the base work. See the open source algorithm library above for more details.
 
 - w: workers
 - l: labels
